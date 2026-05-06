@@ -1,0 +1,800 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// NextAuth Required Models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+enum Role {
+  SUPER_ADMIN
+  COMPANY_ADMIN
+  ASSET_MANAGER
+  INVENTORY_MANAGER
+  MAINTENANCE_MANAGER
+  TECHNICIAN
+  EMPLOYEE
+  AUDITOR
+  FINANCE_VIEWER
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+}
+
+enum AssetStatus {
+  ACTIVE
+  ASSIGNED
+  REPAIR
+  DISPOSED
+  LOST
+}
+
+enum HandoverType {
+  NEW_HIRE
+  REPLACEMENT
+  TEMPORARY_LOAN
+}
+
+enum PhysicalCondition {
+  BRAND_NEW
+  USED_EXCELLENT
+  USED_FAIR
+}
+
+enum FunctionalStatus {
+  WORKING
+  MINOR_ISSUES
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  ON_HOLD
+  PENDING_PARTS
+  RESOLVED
+  CLOSED
+  CANCELLED
+}
+
+enum MaintenanceType {
+  CORRECTIVE
+  PREVENTIVE
+  UPGRADE
+  OTHER
+}
+
+// ----------------------------------------------------------------------
+// NEW INVENTORY ENUMS
+// ----------------------------------------------------------------------
+
+enum InventoryItemType {
+  CONSUMABLE
+  SPARE
+  TOOL
+  OTHER
+}
+
+enum InventoryItemStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum MovementDirection {
+  IN
+  OUT
+}
+
+enum MovementType {
+  OPENING_STOCK
+  PURCHASE_RECEIPT
+  MANUAL_STOCK_IN
+  MANUAL_STOCK_OUT
+  ISSUE_TO_EMPLOYEE
+  ISSUE_TO_ASSET
+  RETURN_IN
+  TRANSFER_IN
+  TRANSFER_OUT
+  ADJUSTMENT_IN
+  ADJUSTMENT_OUT
+  DAMAGED_OUT
+  SCRAP_OUT
+}
+
+enum TransferStatus {
+  REQUESTED
+  APPROVED
+  IN_TRANSIT
+  COMPLETED
+  REJECTED
+  CANCELLED
+}
+
+enum TransferType {
+  LOCATION_TO_LOCATION
+  EMPLOYEE_TO_EMPLOYEE
+  EMPLOYEE_TO_LOCATION
+  LOCATION_TO_EMPLOYEE
+}
+
+model User {
+  id              String    @id @default(cuid())
+  name            String?
+  email           String?   @unique
+  passwordHash    String?
+  emailVerified   DateTime?
+  image           String?
+  activeCompanyId String?
+  employee        Employee?
+
+  status             UserStatus @default(PENDING)
+  isSuperAdmin       Boolean    @default(false)
+  mobile             String?
+  requestedRole      Role?
+  requestedCompanyId String?
+  rejectionRemarks   String?
+
+  accounts     Account[]
+  sessions     Session[]
+  companyRoles CompanyUser[]
+
+  assignments      AssetAssignment[] @relation("assignedToUser")
+  assignedBy       AssetAssignment[] @relation("assignedByAdmin")
+  managedHandovers AssetAssignment[] @relation("managerUser")
+
+  ticketsCreated  MaintenanceTicket[] @relation("ticketCreator")
+  ticketsAssigned MaintenanceTicket[] @relation("ticketAssignee")
+  activityLogs    ActivityLog[]
+
+  // Inventory tracking references
+  inventoryItemsCreated InventoryItem[]        @relation("itemCreator")
+  inventoryItemsUpdated InventoryItem[]        @relation("itemUpdater")
+  inventoryTransactions InventoryTransaction[] @relation("transactionCreator")
+  issuedTransactions    InventoryTransaction[] @relation("issuedToEmployee")
+  inventoryAdjustments  InventoryAdjustment[]  @relation("adjustmentCreator")
+
+  transfersRequested AssetTransfer[] @relation("transferRequestedBy")
+  transfersApproved  AssetTransfer[] @relation("transferApprovedBy")
+  transfersCompleted AssetTransfer[] @relation("transferCompletedBy")
+  transfersUpdated   AssetTransfer[] @relation("transferUpdatedBy")
+}
+
+model Company {
+  id                   String   @id @default(cuid())
+  name                 String
+  logoUrl              String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  code                 String?  @unique
+  lastTransferSequence Int      @default(0)
+
+  users              CompanyUser[]
+  departments        Department[]
+  locations          Location[]
+  assetCategories    AssetCategory[]
+  assets             Asset[]
+  maintenanceTickets MaintenanceTicket[]
+  activityLogs       ActivityLog[]
+  vendors            Vendor[]
+  settings           CompanySettings?
+
+  // Inventory module 
+  inventoryCategories   InventoryCategory[]
+  inventoryUnits        UnitOfMeasure[]
+  inventoryLocations    InventoryLocation[]
+  inventoryItems        InventoryItem[]
+  inventoryTransactions InventoryTransaction[]
+  inventoryBalances     InventoryBalance[]
+  inventoryAdjustments  InventoryAdjustment[]
+  maintenanceSchedules  MaintenanceSchedule[]
+  employees             Employee[]
+}
+
+model CompanyUser {
+  id        String @id @default(cuid())
+  companyId String
+  userId    String
+  role      Role   @default(EMPLOYEE)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, userId])
+  @@index([companyId])
+  @@index([userId])
+}
+
+model CompanySettings {
+  id                         String  @id @default(cuid())
+  companyId                  String  @unique
+  assetCodePrefix            String?
+  currency                   String? @default("INR")
+  dateFormat                 String? @default("DD-MM-YYYY")
+  maintenanceReminderDays    Int     @default(7)
+  requireTransferApproval    Boolean @default(true)
+  requireMaintenanceApproval Boolean @default(false)
+  autoGenerateAssetCode      Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+}
+
+model Department {
+  id          String   @id @default(cuid())
+  companyId   String
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company     Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  assets      Asset[]
+  employees   Employee[]
+  assignments AssetAssignment[]
+
+  @@unique([companyId, name])
+  @@index([companyId])
+}
+
+model Location {
+  id               String   @id @default(cuid())
+  companyId        String
+  name             String
+  code             String?
+  parentLocationId String?
+  description      String?
+  addressLine1     String?
+  addressLine2     String?
+  city             String?
+  state            String?
+  country          String?
+  postalCode       String?
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  assets    Asset[]
+  employees Employee[]
+
+  parent   Location?  @relation("LocationHierarchy", fields: [parentLocationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  children Location[] @relation("LocationHierarchy")
+
+  transfersFrom AssetTransfer[]   @relation("transferFromLocation")
+  transfersTo   AssetTransfer[]   @relation("transferToLocation")
+  assignments   AssetAssignment[]
+
+  @@unique([companyId, name])
+  @@unique([companyId, code])
+  @@index([companyId])
+  @@index([companyId, parentLocationId])
+}
+
+model AssetCategory {
+  id          String   @id @default(cuid())
+  companyId   String
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  assets  Asset[]
+
+  @@unique([companyId, name])
+  @@index([companyId])
+}
+
+model Asset {
+  id           String  @id @default(cuid())
+  companyId    String
+  categoryId   String
+  departmentId String?
+  locationId   String?
+  vendorId     String?
+
+  name         String
+  assetCode    String?
+  assetTag     String
+  serialNumber String?
+  brand        String?
+  model        String?
+
+  status    AssetStatus @default(ACTIVE)
+  condition String?
+
+  specifications            String?
+  accessoriesIncluded       String[] @default([])
+  estimatedReplacementValue Float?
+  attachmentUrl             String?
+
+  purchaseDate  DateTime?
+  cost          Float?
+  usefulLife    Int?
+  residualValue Float?
+
+  warranty           String?
+  warrantyExpiration DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company    Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  category   AssetCategory @relation(fields: [categoryId], references: [id])
+  department Department?   @relation(fields: [departmentId], references: [id])
+  location   Location?     @relation(fields: [locationId], references: [id])
+  vendor     Vendor?       @relation(fields: [vendorId], references: [id])
+
+  assignments          AssetAssignment[]
+  tickets              MaintenanceTicket[]
+  transfers            AssetTransfer[]
+  inventoryIssues      InventoryTransaction[] @relation("issuedToAsset")
+  maintenanceSchedules MaintenanceSchedule[]
+
+  @@unique([companyId, assetTag])
+  @@unique([companyId, assetCode])
+  @@index([companyId])
+  @@index([categoryId])
+  @@index([status])
+}
+
+model AssetAssignment {
+  id            String  @id @default(cuid())
+  companyId     String
+  assetId       String
+  userId        String?
+  assignedById  String
+  managerUserId String?
+  employeeId    String?
+  departmentId  String?
+  locationId    String?
+
+  transactionId String    @unique
+  assignedAt    DateTime  @default(now())
+  handoverDate  DateTime?
+  returnedAt    DateTime?
+
+  handoverType      HandoverType?
+  physicalCondition PhysicalCondition?
+  functionalStatus  FunctionalStatus?
+
+  condition             String?
+  notes                 String?
+  attachmentUrl         String?
+  employeeSignatureName String?
+  issuingOfficerName    String?
+  termsAccepted         Boolean @default(false)
+
+  returnCondition String?
+  returnReason    String?
+  clearanceStatus String?
+  maintenanceLogs String?
+
+  asset      Asset       @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  user       User?       @relation("assignedToUser", fields: [userId], references: [id])
+  employee   Employee?   @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  department Department? @relation(fields: [departmentId], references: [id])
+  location   Location?   @relation(fields: [locationId], references: [id])
+  assignedBy User        @relation("assignedByAdmin", fields: [assignedById], references: [id])
+  manager    User?       @relation("managerUser", fields: [managerUserId], references: [id])
+
+  @@index([companyId])
+  @@index([assetId])
+  @@index([userId])
+  @@index([transactionId])
+}
+
+model AssetTransfer {
+  id           String         @id @default(cuid())
+  companyId    String
+  assetId      String
+  transferCode String?        @unique
+  transferType TransferType
+  status       TransferStatus @default(REQUESTED)
+
+  fromLocationId String?
+  toLocationId   String?
+  fromEmployeeId String?
+  toEmployeeId   String?
+
+  requestedById String
+  approvedById  String?
+  completedById String?
+  updatedById   String?
+
+  reason          String?
+  notes           String?
+  conditionBefore String?
+  conditionAfter  String?
+
+  plannedTransferDate DateTime?
+  expectedReceiptDate DateTime?
+  actualDispatchDate  DateTime?
+  actualReceiptDate   DateTime?
+
+  requestedAt DateTime  @default(now())
+  completedAt DateTime?
+  updatedAt   DateTime  @updatedAt
+
+  asset        Asset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  fromLocation Location? @relation("transferFromLocation", fields: [fromLocationId], references: [id])
+  toLocation   Location? @relation("transferToLocation", fields: [toLocationId], references: [id])
+  fromEmployee Employee? @relation("transferFromEmployee", fields: [fromEmployeeId], references: [id])
+  toEmployee   Employee? @relation("transferToEmployee", fields: [toEmployeeId], references: [id])
+  requestedBy  User      @relation("transferRequestedBy", fields: [requestedById], references: [id])
+  approvedBy   User?     @relation("transferApprovedBy", fields: [approvedById], references: [id])
+  completedBy  User?     @relation("transferCompletedBy", fields: [completedById], references: [id])
+  updatedBy    User?     @relation("transferUpdatedBy", fields: [updatedById], references: [id])
+
+  @@index([companyId])
+  @@index([assetId])
+  @@index([status])
+}
+
+model MaintenanceTicket {
+  id          String          @id @default(cuid())
+  companyId   String
+  assetId     String
+  title       String
+  description String?
+  priority    TicketPriority  @default(MEDIUM)
+  status      TicketStatus    @default(OPEN)
+  type        MaintenanceType @default(CORRECTIVE)
+
+  createdById  String
+  assignedToId String?
+  vendorId     String?
+
+  scheduledDate DateTime?
+  startedAt     DateTime?
+  resolvedAt    DateTime?
+  completedAt   DateTime?
+
+  downtimeHours Float?
+  estimatedCost Float?
+  laborCost     Float?
+  partsCost     Float?
+  cost          Float?
+
+  resolutionNotes String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company    Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  asset      Asset   @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  createdBy  User    @relation("ticketCreator", fields: [createdById], references: [id])
+  assignedTo User?   @relation("ticketAssignee", fields: [assignedToId], references: [id])
+  vendor     Vendor? @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@index([assetId])
+  @@index([status])
+  @@index([vendorId])
+}
+
+model MaintenanceSchedule {
+  id                  String    @id @default(cuid())
+  companyId           String
+  assetId             String
+  title               String
+  description         String?
+  frequencyDays       Int
+  lastMaintenanceDate DateTime?
+  nextDueDate         DateTime
+  isActive            Boolean   @default(true)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  asset   Asset   @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([assetId])
+  @@index([nextDueDate])
+}
+
+model Employee {
+  id           String    @id @default(cuid())
+  companyId    String
+  userId       String?   @unique
+  employeeCode String
+  fullName     String
+  email        String?
+  phone        String?
+  departmentId String?
+  locationId   String?
+  designation  String?
+  status       String    @default("ACTIVE")
+  joiningDate  DateTime
+  exitDate     DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  company     Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user        User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  department  Department?       @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  location    Location?         @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  assignments AssetAssignment[]
+
+  transfersFrom AssetTransfer[] @relation("transferFromEmployee")
+  transfersTo   AssetTransfer[] @relation("transferToEmployee")
+
+  @@unique([companyId, employeeCode])
+  @@index([companyId])
+}
+
+model Vendor {
+  id           String   @id @default(cuid())
+  companyId    String
+  name         String
+  description  String?
+  contactName  String?
+  email        String?
+  phone        String?
+  service      String?
+  addressLine1 String?
+  addressLine2 String?
+  city         String?
+  state        String?
+  country      String?
+  postalCode   String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  company Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  assets  Asset[]
+  tickets MaintenanceTicket[]
+
+  @@unique([companyId, name])
+  @@index([companyId])
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  companyId String
+  userId    String?
+  action    String
+  entity    String
+  entityId  String
+  details   String?  @db.Text
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@index([entity, entityId])
+}
+
+// ======================================================================
+// NEW INVENTORY MODULE ARCHITECTURE
+// ======================================================================
+
+model InventoryCategory {
+  id          String   @id @default(cuid())
+  companyId   String
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  items   InventoryItem[]
+
+  @@unique([companyId, name])
+  @@index([companyId])
+}
+
+model UnitOfMeasure {
+  id          String   @id @default(cuid())
+  companyId   String
+  name        String
+  symbol      String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  items   InventoryItem[]
+
+  @@unique([companyId, symbol])
+  @@index([companyId])
+}
+
+model InventoryLocation {
+  id          String   @id @default(cuid())
+  companyId   String
+  name        String
+  code        String?
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company      Company                @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  items        InventoryItem[]
+  balances     InventoryBalance[]
+  transactions InventoryTransaction[]
+  adjustments  InventoryAdjustment[]
+
+  @@unique([companyId, name])
+  @@unique([companyId, code])
+  @@index([companyId])
+}
+
+model InventoryItem {
+  id                String              @id @default(cuid())
+  companyId         String
+  sku               String
+  name              String
+  description       String?
+  categoryId        String?
+  unitId            String?
+  defaultLocationId String?
+  minStockLevel     Int                 @default(0)
+  reorderLevel      Int                 @default(0)
+  itemType          InventoryItemType   @default(CONSUMABLE)
+  status            InventoryItemStatus @default(ACTIVE)
+
+  isSerialTracked Boolean @default(false)
+  isBatchTracked  Boolean @default(false)
+
+  createdById String?
+  updatedById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company         Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  category        InventoryCategory? @relation(fields: [categoryId], references: [id])
+  unit            UnitOfMeasure?     @relation(fields: [unitId], references: [id])
+  defaultLocation InventoryLocation? @relation(fields: [defaultLocationId], references: [id])
+
+  createdBy User? @relation("itemCreator", fields: [createdById], references: [id])
+  updatedBy User? @relation("itemUpdater", fields: [updatedById], references: [id])
+
+  balances     InventoryBalance[]
+  transactions InventoryTransaction[]
+  adjustments  InventoryAdjustment[]
+
+  @@unique([companyId, sku])
+  @@index([companyId])
+  @@index([categoryId])
+  @@index([status])
+  @@index([itemType])
+}
+
+model InventoryTransaction {
+  id           String            @id @default(cuid())
+  companyId    String
+  itemId       String
+  locationId   String
+  direction    MovementDirection
+  movementType MovementType
+  quantity     Int
+  unitCost     Float?
+  balanceAfter Int?
+
+  employeeId String?
+  assetId    String?
+  notes      String?
+
+  referenceType String?
+  referenceId   String?
+
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  company   Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  item      InventoryItem     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  location  InventoryLocation @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  createdBy User?             @relation("transactionCreator", fields: [createdById], references: [id])
+
+  employee User?  @relation("issuedToEmployee", fields: [employeeId], references: [id])
+  asset    Asset? @relation("issuedToAsset", fields: [assetId], references: [id])
+
+  @@index([companyId])
+  @@index([itemId])
+  @@index([locationId])
+  @@index([movementType])
+  @@index([createdAt])
+}
+
+model InventoryBalance {
+  id             String   @id @default(cuid())
+  companyId      String
+  itemId         String
+  locationId     String
+  quantityOnHand Int      @default(0)
+  reservedQty    Int      @default(0)
+  availableQty   Int      @default(0)
+  updatedAt      DateTime @updatedAt
+
+  company  Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  item     InventoryItem     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  location InventoryLocation @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, itemId, locationId])
+  @@index([companyId])
+  @@index([itemId])
+  @@index([locationId])
+}
+
+model InventoryAdjustment {
+  id            String  @id @default(cuid())
+  companyId     String
+  itemId        String
+  locationId    String
+  systemQty     Int
+  actualQty     Int
+  differenceQty Int
+  reason        String
+  notes         String?
+
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  company   Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  item      InventoryItem     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  location  InventoryLocation @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  createdBy User?             @relation("adjustmentCreator", fields: [createdById], references: [id])
+
+  @@index([companyId])
+  @@index([itemId])
+  @@index([locationId])
+}

@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Asset Management Portal — Documentation</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary: #4f46e5;
+      --primary-light: #eef2ff;
+      --primary-mid: #6366f1;
+      --accent: #0ea5e9;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --bg: #ffffff;
+      --bg-alt: #f8fafc;
+      --tag-bg: #f1f5f9;
+      --code-bg: #1e293b;
+      --code-text: #e2e8f0;
+      --shadow: 0 1px 3px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.04);
+    }
+
+    html { font-size: 14px; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      line-height: 1.7;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    /* ── COVER PAGE ─────────────────────────────────────────────── */
+    .cover {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 80px 72px;
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #312e81 100%);
+      color: #fff;
+      page-break-after: always;
+      position: relative;
+      overflow: hidden;
+    }
+    .cover::before {
+      content: '';
+      position: absolute;
+      top: -120px; right: -120px;
+      width: 500px; height: 500px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(99,102,241,.35) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .cover::after {
+      content: '';
+      position: absolute;
+      bottom: -80px; left: -80px;
+      width: 380px; height: 380px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(14,165,233,.2) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .cover-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(99,102,241,.25);
+      border: 1px solid rgba(99,102,241,.5);
+      border-radius: 100px;
+      padding: 6px 16px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: #a5b4fc;
+      margin-bottom: 32px;
+    }
+    .cover-badge::before { content: '●'; font-size: 8px; color: #6ee7b7; }
+    .cover h1 {
+      font-size: 52px;
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -.02em;
+      background: linear-gradient(135deg, #fff 0%, #c7d2fe 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 8px;
+    }
+    .cover-sub {
+      font-size: 22px;
+      font-weight: 300;
+      color: #94a3b8;
+      margin-bottom: 40px;
+    }
+    .cover-meta {
+      display: flex;
+      gap: 40px;
+      flex-wrap: wrap;
+    }
+    .cover-meta-item { display: flex; flex-direction: column; gap: 2px; }
+    .cover-meta-item .label { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: #64748b; font-weight: 600; }
+    .cover-meta-item .value { font-size: 14px; color: #cbd5e1; font-weight: 500; }
+    .cover-logo {
+      position: absolute;
+      top: 48px; right: 72px;
+      width: 56px; height: 56px;
+      background: rgba(99,102,241,.2);
+      border: 1px solid rgba(99,102,241,.4);
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 26px;
+    }
+
+    /* ── TOC PAGE ───────────────────────────────────────────────── */
+    .toc-page {
+      padding: 60px 72px;
+      page-break-after: always;
+    }
+    .toc-page h2 {
+      font-size: 28px; font-weight: 700; margin-bottom: 32px;
+      padding-bottom: 16px;
+      border-bottom: 2px solid var(--border);
+    }
+    .toc-list { list-style: none; }
+    .toc-list li {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 9px 0;
+      border-bottom: 1px dotted var(--border);
+      font-size: 13.5px;
+    }
+    .toc-list li.toc-section {
+      font-weight: 700;
+      color: var(--primary);
+      font-size: 14px;
+      margin-top: 12px;
+    }
+    .toc-list li.toc-sub { padding-left: 20px; color: var(--text-muted); font-size: 12.5px; }
+    .toc-num {
+      min-width: 28px; height: 28px;
+      background: var(--primary-light);
+      color: var(--primary);
+      border-radius: 6px;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; margin-right: 10px;
+    }
+
+    /* ── CONTENT PAGE ───────────────────────────────────────────── */
+    .page {
+      padding: 48px 72px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    /* Section header strip */
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: linear-gradient(90deg, var(--primary-light) 0%, transparent 100%);
+      border-left: 4px solid var(--primary);
+      border-radius: 0 8px 8px 0;
+      padding: 14px 20px;
+      margin-bottom: 28px;
+      page-break-inside: avoid;
+    }
+    .section-header .num {
+      width: 36px; height: 36px;
+      background: var(--primary);
+      color: #fff;
+      border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 15px;
+      flex-shrink: 0;
+    }
+    .section-header h2 { font-size: 20px; font-weight: 700; }
+
+    h3 {
+      font-size: 15px; font-weight: 700;
+      margin: 28px 0 12px;
+      color: var(--text);
+      display: flex; align-items: center; gap: 8px;
+    }
+    h3::before {
+      content: '';
+      display: inline-block;
+      width: 4px; height: 16px;
+      background: var(--accent);
+      border-radius: 2px;
+    }
+
+    h4 {
+      font-size: 13px; font-weight: 700;
+      color: var(--primary-mid);
+      margin: 20px 0 8px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    p { margin-bottom: 14px; color: var(--text); font-size: 13.5px; }
+
+    ul, ol {
+      margin: 10px 0 16px 20px;
+      font-size: 13.5px;
+    }
+    ul li, ol li { margin-bottom: 5px; }
+
+    /* ── TABLES ─────────────────────────────────────────────────── */
+    .table-wrap { overflow-x: auto; margin: 16px 0 24px; border-radius: 10px; border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    thead tr { background: var(--primary); color: #fff; }
+    thead th {
+      padding: 10px 14px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 11px;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+    }
+    tbody tr { border-bottom: 1px solid var(--border); }
+    tbody tr:nth-child(even) { background: var(--bg-alt); }
+    tbody tr:hover { background: var(--primary-light); }
+    tbody td { padding: 9px 14px; vertical-align: top; }
+    tbody td:first-child { font-weight: 600; color: var(--primary-mid); }
+
+    /* ── CODE BLOCKS ────────────────────────────────────────────── */
+    pre {
+      background: var(--code-bg);
+      color: var(--code-text);
+      border-radius: 10px;
+      padding: 18px 20px;
+      overflow-x: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11.5px;
+      line-height: 1.6;
+      margin: 16px 0 24px;
+      border: 1px solid #334155;
+    }
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11.5px;
+      background: var(--tag-bg);
+      color: var(--primary-mid);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+    }
+    pre code {
+      background: transparent;
+      color: inherit;
+      padding: 0;
+      border: none;
+      font-size: inherit;
+    }
+
+    /* ── BADGES / TAGS ──────────────────────────────────────────── */
+    .badge {
+      display: inline-flex; align-items: center;
+      padding: 2px 10px;
+      border-radius: 100px;
+      font-size: 10.5px; font-weight: 600;
+      letter-spacing: .03em;
+    }
+    .badge-blue { background: #dbeafe; color: #1d4ed8; }
+    .badge-green { background: #d1fae5; color: #065f46; }
+    .badge-orange { background: #ffedd5; color: #9a3412; }
+    .badge-red { background: #fee2e2; color: #991b1b; }
+    .badge-purple { background: #ede9fe; color: #5b21b6; }
+
+    /* ── INFO BOXES ─────────────────────────────────────────────── */
+    .info-box {
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 16px 0;
+      display: flex;
+      gap: 12px;
+      font-size: 13px;
+    }
+    .info-box .icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+    .info-box p { margin: 0; }
+    .info-box.note { background: #eff6ff; border: 1px solid #bfdbfe; }
+    .info-box.warning { background: #fffbeb; border: 1px solid #fde68a; }
+    .info-box.tip { background: #f0fdf4; border: 1px solid #bbf7d0; }
+
+    /* ── WORKFLOW STEPS ─────────────────────────────────────────── */
+    .workflow {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0;
+      margin: 16px 0 24px;
+    }
+    .workflow-step {
+      display: inline-flex; align-items: center; justify-content: center;
+      background: var(--primary-light);
+      color: var(--primary);
+      border: 1.5px solid var(--primary);
+      border-radius: 6px;
+      padding: 6px 14px;
+      font-size: 12px; font-weight: 600;
+    }
+    .workflow-arrow {
+      color: var(--text-muted);
+      font-size: 18px;
+      padding: 0 6px;
+    }
+
+    /* ── CARDS ──────────────────────────────────────────────────── */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 16px;
+      margin: 16px 0 24px;
+    }
+    .card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      background: var(--bg-alt);
+    }
+    .card-icon { font-size: 22px; margin-bottom: 8px; }
+    .card h4 { margin: 0 0 6px; font-size: 13px; color: var(--text); text-transform: none; letter-spacing: 0; }
+    .card p { margin: 0; font-size: 12px; color: var(--text-muted); }
+
+    /* ── ENUM TAG LIST ──────────────────────────────────────────── */
+    .enum-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 20px; }
+    .enum-tag {
+      background: var(--tag-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 11.5px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--primary-mid);
+      font-weight: 500;
+    }
+
+    /* ── DIVIDER ────────────────────────────────────────────────── */
+    hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+
+    /* ── FOOTER ─────────────────────────────────────────────────── */
+    .footer {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 11px;
+      padding: 24px 72px 40px;
+      border-top: 1px solid var(--border);
+      margin-top: 40px;
+    }
+
+    /* ── PRINT ──────────────────────────────────────────────────── */
+    @media print {
+      @page { margin: 0; size: A4; }
+      .cover { page-break-after: always; }
+      .toc-page { page-break-after: always; }
+      h2, h3, h4 { page-break-after: avoid; }
+      pre, .table-wrap, .card-grid { page-break-inside: avoid; }
+      .page { padding: 40px 60px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!--  COVER                                                        -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div class="cover">
+  <div class="cover-logo">📦</div>
+  <div class="cover-badge">Technical Documentation · v1.0</div>
+  <h1>Asset Management<br>Portal</h1>
+  <div class="cover-sub">ABPL / IBA — Complete System Documentation</div>
+  <div class="cover-meta">
+    <div class="cover-meta-item">
+      <span class="label">Framework</span>
+      <span class="value">Next.js 16 · React 19</span>
+    </div>
+    <div class="cover-meta-item">
+      <span class="label">Database</span>
+      <span class="value">PostgreSQL · Prisma ORM</span>
+    </div>
+    <div class="cover-meta-item">
+      <span class="label">Auth</span>
+      <span class="value">NextAuth v5 (JWT)</span>
+    </div>
+    <div class="cover-meta-item">
+      <span class="label">Generated</span>
+      <span class="value">April 2026</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!--  TABLE OF CONTENTS                                            -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div class="toc-page">
+  <h2>Table of Contents</h2>
+  <ul class="toc-list">
+    <li class="toc-section"><span><span class="toc-num">1</span> Project Overview</span></li>
+    <li class="toc-section"><span><span class="toc-num">2</span> Tech Stack</span></li>
+    <li class="toc-section"><span><span class="toc-num">3</span> Architecture</span></li>
+    <li class="toc-section"><span><span class="toc-num">4</span> Authentication &amp; Authorization</span></li>
+    <li class="toc-sub"><span>4.1 JWT Strategy</span></li>
+    <li class="toc-sub"><span>4.2 Middleware Route Protection</span></li>
+    <li class="toc-sub"><span>4.3 Registration Approval Workflow</span></li>
+    <li class="toc-section"><span><span class="toc-num">5</span> User Roles</span></li>
+    <li class="toc-section"><span><span class="toc-num">6</span> Database Schema</span></li>
+    <li class="toc-sub"><span>6.1 Entity Diagram</span></li>
+    <li class="toc-sub"><span>6.2 Key Models</span></li>
+    <li class="toc-section"><span><span class="toc-num">7</span> Modules</span></li>
+    <li class="toc-sub"><span>7.1 Dashboard</span></li>
+    <li class="toc-sub"><span>7.2 Assets</span></li>
+    <li class="toc-sub"><span>7.3 Inventory</span></li>
+    <li class="toc-sub"><span>7.4 Maintenance</span></li>
+    <li class="toc-sub"><span>7.5 Employees</span></li>
+    <li class="toc-sub"><span>7.6 Transfers</span></li>
+    <li class="toc-sub"><span>7.7 Locations</span></li>
+    <li class="toc-sub"><span>7.8 Settings</span></li>
+    <li class="toc-sub"><span>7.9 Super Admin</span></li>
+    <li class="toc-section"><span><span class="toc-num">8</span> API Reference</span></li>
+    <li class="toc-section"><span><span class="toc-num">9</span> Key Components</span></li>
+    <li class="toc-section"><span><span class="toc-num">10</span> Setup &amp; Running Locally</span></li>
+    <li class="toc-section"><span><span class="toc-num">11</span> Environment Variables</span></li>
+    <li class="toc-section"><span><span class="toc-num">A</span> Enum Reference</span></li>
+  </ul>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!--  SECTION 1 — PROJECT OVERVIEW                                 -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="section-header"><div class="num">1</div><h2>Project Overview</h2></div>
+
+  <p>The <strong>Asset Management Portal</strong> is a multi-tenant, role-based web application for managing physical assets, inventory, maintenance, employees, and asset transfers within an organisation. Each company (tenant) has fully isolated data, and users can belong to multiple companies with different roles in each.</p>
+
+  <h3>Core Capabilities</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Capability</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>Asset Lifecycle</td><td>Register, assign, transfer, retire, and dispose of physical assets</td></tr>
+        <tr><td>Inventory Management</td><td>Track consumables, spare parts, and tools with stock movements</td></tr>
+        <tr><td>Maintenance</td><td>Log tickets, assign technicians, schedule preventive maintenance</td></tr>
+        <tr><td>Employee Management</td><td>Maintain employee records, link to user accounts, track assignments</td></tr>
+        <tr><td>Transfer Management</td><td>Request, approve, and complete asset transfers</td></tr>
+        <tr><td>Multi-tenancy</td><td>Full data isolation per company; company switcher in UI</td></tr>
+        <tr><td>Admin Approval Workflow</td><td>New user registrations require SUPER_ADMIN approval</td></tr>
+        <tr><td>Bulk Import</td><td>Excel-based import for assets, employees, and inventory items</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!--  SECTION 2 — TECH STACK                                       -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="section-header"><div class="num">2</div><h2>Tech Stack</h2></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Layer</th><th>Technology</th><th>Version</th></tr></thead>
+      <tbody>
+        <tr><td>Framework</td><td>Next.js</td><td>16.2.1</td></tr>
+        <tr><td>Runtime</td><td>React</td><td>19.2.4</td></tr>
+        <tr><td>Language</td><td>TypeScript</td><td>^5</td></tr>
+        <tr><td>Database</td><td>PostgreSQL</td><td>(Docker or managed)</td></tr>
+        <tr><td>ORM</td><td>Prisma</td><td>^7.6.0</td></tr>
+        <tr><td>Authentication</td><td>NextAuth v5 (beta)</td><td>^5.0.0-beta.30</td></tr>
+        <tr><td>UI Components</td><td>shadcn/ui + Radix UI</td><td>—</td></tr>
+        <tr><td>Styling</td><td>Tailwind CSS</td><td>^4</td></tr>
+        <tr><td>Forms</td><td>React Hook Form + Zod</td><td>^7 / ^4</td></tr>
+        <tr><td>State / Fetching</td><td>TanStack React Query</td><td>^5</td></tr>
+        <tr><td>Charts</td><td>Recharts</td><td>^3</td></tr>
+        <tr><td>Excel I/O</td><td>xlsx</td><td>^0.18.5</td></tr>
+        <tr><td>Notifications</td><td>Sonner (toasts)</td><td>^2</td></tr>
+        <tr><td>Icons</td><td>Lucide React</td><td>^1</td></tr>
+        <tr><td>Date Utils</td><td>date-fns</td><td>^4</td></tr>
+        <tr><td>Password Hashing</td><td>bcryptjs</td><td>^3</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!--  SECTION 3 — ARCHITECTURE                                     -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="section-header"><div class="num">3</div><h2>Architecture</h2></div>
+
+  <h3>Directory Structure</h3>
+<pre><code>src/
+├── app/                        # Next.js App Router
+│   ├── (auth)/                 # Auth routes (login, register)
+│   ├── (dashboard)/            # Protected dashboard routes
+│   │   ├── layout.tsx          # Auth check + sidebar + header
+│   │   ├── dashboard/
+│   │   ├── assets/
+│   │   ├── inventory/
+│   │   ├── maintenance/
+│   │   ├── employees/
+│   │   ├── transfers/
+│   │   ├── locations/
+│   │   ├── settings/
+│   │   └── super-admin/        # SUPER_ADMIN only
+│   ├── api/                    # Next.js Route Handlers (REST)
+│   │   ├── assets/
+│   │   ├── auth/
+│   │   ├── departments/
+│   │   ├── employees/
+│   │   ├── locations/
+│   │   ├── maintenance/
+│   │   ├── settings/
+│   │   └── transfers/
+│   └── actions/                # Server Actions
+│
+├── components/                 # React components (by feature)
+│   ├── assets/ · dashboard/ · employees/
+│   ├── inventory/ · locations/ · maintenance/
+│   ├── settings/ · transfers/ · ui/
+│   └── app-sidebar.tsx · company-switcher.tsx
+│
+├── services/                   # Business-logic layer
+│   ├── assignment-service.ts
+│   ├── employee-service.ts
+│   ├── location-service.ts
+│   ├── maintenance-service.ts
+│   ├── settings-service.ts
+│   └── transfer-service.ts
+│
+├── lib/                        # Shared utilities
+│   ├── auth.ts                 # NextAuth instance
+│   └── db.ts                   # Prisma client singleton
+│
+├── hooks/                      # Custom React hooks
+├── types/                      # TypeScript type definitions
+├── auth.config.ts              # NextAuth JWT / session config
+└── middleware.ts               # Route protection</code></pre>
+
+  <h3>Request Flow</h3>
+<pre><code>Browser → middleware.ts (auth guard)
+         → Next.js App Router
+           ├── Server Component → Prisma → PostgreSQL
+           └── Client Component → fetch /api/* → Route Handler → Prisma → PostgreSQL</code></pre>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!--  SECTION 4 — AUTH                                             -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="section-header"><div class="num">4</div><h2>Authentication &amp; Authorization</h2></div>
+
+  <h3>Authentication Method</h3>
+  <ul>
+    <li><strong>Provider:</strong> Email + Password credentials (NextAuth v5 Credentials provider)</li>
+    <li><strong>Session Strategy:</strong> JWT (stateless)</li>
+    <li><strong>Password Storage:</strong> bcryptjs hash stored in <code>User.passwordHash</code></li>
+  </ul>
+
+  <h3>JWT Token Payload</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Field</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>id</td><td>User's database ID</td></tr>
+        <tr><td>activeCompanyId</td><td>Currently active company</td></tr>
+        <tr><td>isSuperAdmin</td><td>Boolean flag for super-admin bypass</td></tr>
+        <tr><td>companyIds</td><td>Array of all company IDs the user belongs to</td></tr>
+        <tr><td>role</td><td>Role in the active company</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Middleware Route Protection</h3>
+  <p><code>src/middleware.ts</code> runs on every page request (excluding <code>api</code>, <code>_next/static</code>, <code>_next/image</code>, <code>favicon.ico</code>):</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Path</th><th>Behaviour</th></tr></thead>
+      <tbody>
+        <tr><td>/</td><td>Redirects to /dashboard</td></tr>
+        <tr><td>/login, /register</td><td>Allowed only when NOT logged in</td></tr>
+        <tr><td>Any protected route</td><td>Requires active session; unauthenticated → /login</td></tr>
+        <tr><td>/super-admin/*</td><td>Requires active session AND isSuperAdmin === true</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Registration Approval Workflow</h3>
+  <div class="workflow">
+    <span class="workflow-step">User Registers</span>
+    <span class="workflow-arrow">→</span>
+    <span class="workflow-step">Status: PENDING</span>
+    <span class="workflow-arrow">→</span>
+    <span class="workflow-step">SUPER_ADMIN Reviews</span>
+    <span class="workflow-arrow">→</span>
+    <span class="workflow-step">APPROVE / REJECT</span>
+    <span class="workflow-arrow">→</span>
+    <span class="workflow-step">ACTIVE / REJECTED</span>
+  </div>
+  <ol>
+    <li>User fills registration form: name, email, password, mobile, requested role &amp; company.</li>
+    <li>Account is created with <code>status: PENDING</code>.</li>
+    <li>SUPER_ADMIN reviews the request at <code>/super-admin/registrations</code>.</li>
+    <li><strong>Approve:</strong> Sets <code>status: ACTIVE</code>, creates <code>CompanyUser</code> record.</li>
+    <li><strong>Reject:</strong> Sets <code>status: REJECTED</code> with optional <code>rejectionRemarks</code>.</li>
+    <li>Only <code>ACTIVE</code> users can successfully log in.</li>
+  </ol>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!--  SECTION 5 — USER ROLES                                       -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="section-header"><div class="num">5</div><h2>User Roles</h2></div>
+  <p>Roles are scoped <strong>per company</strong> via the <code>CompanyUser</code> join table. A user can have different roles in different companies.</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Role</th><th>Typical Access</th></tr></thead>
+      <tbody>
+        <tr><td>SUPER_ADMIN</td><td>Full access across all companies; manages registrations &amp; user accounts</td></tr>
+        <tr><td>COMPANY_ADMIN</td><td>Full access within their company</td></tr>
+        <tr><td>ASSET_MANAGER</td><td>Manage assets, assignments, and transfers</td></tr>
+        <tr><td>INVENTORY_MANAGER</td><td>Manage inventory items, stock, and adjustments</td></tr>
+        <tr><td>MAINTENANCE_MANAGER</td><td>Manage maintenance tickets and schedules</td></tr>
+        <tr><td>TECHNICIAN</td><td>View and update assigned maintenance tickets</td></tr>
+        <tr><td>EMPLOYEE</td><td>View own assigned assets</td></tr>
+        <tr><td>AUDITOR</td><td>Read-only access for auditing purposes</td></tr>
+        <tr><td>FINANCE_VIEWER</td><td>Read-only access to cost and financial data</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!--  SECTION 6 — DATABASE SCHEMA                                  -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="section-header"><div class="num">6</div><h2>Database Schema</h2></div>
+  <p>PostgreSQL via Prisma ORM. All data is fully tenant-isolated by <code>companyId</code>.</p>
+
+  <h3>Entity Hierarchy</h3>
+<pre><code>Company
+  ├── CompanyUser     (users ↔ roles)
+  ├── CompanySettings (per-company config)
+  ├── Department
+  ├── Location        (hierarchical, self-referential)
+  ├── AssetCategory
+  ├── Vendor
+  ├── Asset
+  │     ├── AssetAssignment    (handovers to Employee/Location)
+  │     ├── AssetTransfer      (movements between locations/employees)
+  │     ├── MaintenanceTicket
+  │     └── MaintenanceSchedule
+  ├── Employee        (optionally linked to User account)
+  ├── InventoryCategory · UnitOfMeasure · InventoryLocation
+  ├── InventoryItem
+  │     ├── InventoryTransaction  (immutable ledger)
+  │     ├── InventoryBalance      (live stock totals)
+  │     └── InventoryAdjustment
+  └── ActivityLog</code></pre>
+
+  <h3>User Model</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>id</td><td>String</td><td>CUID primary key</td></tr>
+        <tr><td>name / email</td><td>String?</td><td>email is unique</td></tr>
+        <tr><td>passwordHash</td><td>String?</td><td>bcrypt hash</td></tr>
+        <tr><td>status</td><td>UserStatus</td><td>PENDING / ACTIVE / REJECTED</td></tr>
+        <tr><td>isSuperAdmin</td><td>Boolean</td><td>System-level bypass flag</td></tr>
+        <tr><td>requestedRole</td><td>Role?</td><td>Role requested at registration</td></tr>
+        <tr><td>requestedCompanyId</td><td>String?</td><td>Company requested at registration</td></tr>
+        <tr><td>rejectionRemarks</td><td>String?</td><td>Filled by SUPER_ADMIN on rejection</td></tr>
+        <tr><td>activeCompanyId</td><td>String?</td><td>Currently selected company</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Asset Model</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>name</td><td>String</td><td>Asset name</td></tr>
+        <tr><td>assetCode</td><td>String?</td><td>Auto-generated code (prefix + sequence)</td></tr>
+        <tr><td>assetTag</td><td>String</td><td>Physical tag/barcode (unique per company)</td></tr>
+        <tr><td>serialNumber</td><td>String?</td><td>Manufacturer serial number</td></tr>
+        <tr><td>brand / model</td><td>String?</td><td>Hardware details</td></tr>
+        <tr><td>status</td><td>AssetStatus</td><td>ACTIVE / ASSIGNED / REPAIR / DISPOSED / LOST</td></tr>
+        <tr><td>purchaseDate / cost</td><td>DateTime? / Float?</td><td>Acquisition details</td></tr>
+        <tr><td>usefulLife</td><td>Int?</td><td>In months</td></tr>
+        <tr><td>warrantyExpiration</td><td>DateTime?</td><td>Warranty end date</td></tr>
+        <tr><td>categoryId / departmentId / locationId / vendorId</td><td>String?</td><td>FK relations</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>AssetAssignment (Handover)</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>transactionId</td><td>String (unique)</td><td>Unique handover transaction ID</td></tr>
+        <tr><td>handoverType</td><td>HandoverType</td><td>NEW_HIRE / REPLACEMENT / TEMPORARY_LOAN</td></tr>
+        <tr><td>physicalCondition</td><td>PhysicalCondition</td><td>BRAND_NEW / USED_EXCELLENT / USED_FAIR</td></tr>
+        <tr><td>functionalStatus</td><td>FunctionalStatus</td><td>WORKING / MINOR_ISSUES</td></tr>
+        <tr><td>employeeSignatureName</td><td>String?</td><td>Captured at handover</td></tr>
+        <tr><td>termsAccepted</td><td>Boolean</td><td>Employee acknowledged terms</td></tr>
+        <tr><td>returnedAt</td><td>DateTime?</td><td>Set when asset is returned</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>InventoryTransaction (Ledger)</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>direction</td><td>MovementDirection</td><td>IN / OUT</td></tr>
+        <tr><td>movementType</td><td>MovementType</td><td>See Appendix A</td></tr>
+        <tr><td>quantity</td><td>Int</td><td>Units moved</td></tr>
+        <tr><td>unitCost</td><td>Float?</td><td>Cost per unit at time of movement</td></tr>
+        <tr><td>balanceAfter</td><td>Int?</td><td>Running balance snapshot</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!--  SECTION 7 — MODULES                                          -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="section-header"><div class="num">7</div><h2>Modules</h2></div>
+
+  <h3>7.1 Dashboard — <code>/dashboard</code></h3>
+  <p>Provides an at-a-glance overview of the company's asset and operational health.</p>
+  <div class="card-grid">
+    <div class="card"><div class="card-icon">📊</div><h4>Stat Cards</h4><p>Total Assets · Active Assets · Assets Under Maintenance · Total Employees</p></div>
+    <div class="card"><div class="card-icon">🥧</div><h4>Charts</h4><p>Asset status distribution via Recharts (pie/bar)</p></div>
+    <div class="card"><div class="card-icon">🔧</div><h4>Maintenance Urgency</h4><p>Upcoming or overdue maintenance schedules</p></div>
+    <div class="card"><div class="card-icon">📋</div><h4>Activity Feed</h4><p>Recent ActivityLog entries for the company</p></div>
+    <div class="card"><div class="card-icon">⚡</div><h4>Quick Actions</h4><p>Shortcut buttons: Add Asset, New Ticket, etc.</p></div>
+  </div>
+
+  <hr/>
+
+  <h3>7.2 Assets — <code>/assets</code>, <code>/assets/[id]</code></h3>
+  <p>Central module managing physical assets throughout their full lifecycle.</p>
+
+  <h4>Asset Registry Table</h4>
+  <ul>
+    <li>Searchable, filterable, sortable data table of all company assets</li>
+    <li><strong>Filters:</strong> Status, Category, Location, Vendor</li>
+    <li><strong>Sort options:</strong> Name, Purchase Date, Cost, Status</li>
+    <li>Long asset names are truncated with ellipsis for clean layout</li>
+  </ul>
+
+  <h4>Key Actions</h4>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Action</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>Add Asset</td><td>Modal form: metadata, financial, warranty, accessories, initial handover</td></tr>
+        <tr><td>Edit Asset</td><td>Inline form for updating asset fields</td></tr>
+        <tr><td>Assign Asset</td><td>Handover modal: selects employee, location, handover type, condition</td></tr>
+        <tr><td>Return Asset</td><td>Captures return condition, reason, and clearance status</td></tr>
+        <tr><td>Bulk Import</td><td>Upload Excel file with all asset fields + initial assignment</td></tr>
+        <tr><td>Transfer Asset</td><td>Initiates a transfer request (see §7.6 Transfers)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h4>Asset Status Lifecycle</h4>
+  <div class="workflow">
+    <span class="workflow-step">ACTIVE</span>
+    <span class="workflow-arrow">→</span>
+    <span class="workflow-step">ASSIGNED</span>
+    <span class="workflow-arrow">→</span>
+    <span class="workflow-step">REPAIR</span>
+    <span class="workflow-arrow">→</span>
+    <span class="workflow-step">DISPOSED / LOST</span>
+  </div>
+
+  <hr/>
+
+  <h3>7.3 Inventory — <code>/inventory</code></h3>
+  <p>Tracks consumables, spare parts, and tools by quantity at various inventory locations.</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Feature</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>Item Catalogue</td><td>All inventory items: SKU, type, category, unit of measure</td></tr>
+        <tr><td>Stock Dashboard</td><td>Summary: Total Items, Low Stock count, Total Transactions</td></tr>
+        <tr><td>Stock Movements</td><td>Record IN/OUT (purchase receipts, issues, returns, etc.)</td></tr>
+        <tr><td>Stock Adjustments</td><td>Correct discrepancies between system and physical count</td></tr>
+        <tr><td>Bulk Import</td><td>Excel import for inventory items</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h4>InventoryBalance Model</h4>
+  <ul>
+    <li><code>quantityOnHand</code> — Physical units present</li>
+    <li><code>reservedQty</code> — Reserved but not yet issued</li>
+    <li><code>availableQty</code> — quantityOnHand − reservedQty</li>
+  </ul>
+
+  <hr/>
+
+  <h3>7.4 Maintenance — <code>/maintenance</code></h3>
+
+  <h4>Maintenance Tickets</h4>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Field</th><th>Values</th></tr></thead>
+      <tbody>
+        <tr><td>Priority</td><td>LOW · MEDIUM · HIGH · CRITICAL</td></tr>
+        <tr><td>Status</td><td>OPEN → IN_PROGRESS → ON_HOLD / PENDING_PARTS → RESOLVED → CLOSED / CANCELLED</td></tr>
+        <tr><td>Type</td><td>CORRECTIVE · PREVENTIVE · UPGRADE · OTHER</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Tickets record: assigned asset, assigned technician, vendor (if outsourced), all timestamps, cost breakdown (<code>estimatedCost</code>, <code>laborCost</code>, <code>partsCost</code>), <code>downtimeHours</code>, and detailed <code>resolutionNotes</code>.</p>
+
+  <h4>Maintenance Schedules</h4>
+  <ul>
+    <li><code>frequencyDays</code> — Recurrence interval (e.g. 90 days)</li>
+    <li><code>lastMaintenanceDate</code> / <code>nextDueDate</code> — Auto-calculated rolling dates</li>
+    <li>"Generate Tickets" button creates tickets for all schedules due within <code>CompanySettings.maintenanceReminderDays</code> (default: 7 days)</li>
+  </ul>
+
+  <hr/>
+
+  <h3>7.5 Employees — <code>/employees</code></h3>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Field</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>employeeCode</td><td>Unique identifier per company</td></tr>
+        <tr><td>fullName / email / phone</td><td>Contact information</td></tr>
+        <tr><td>designation</td><td>Job title</td></tr>
+        <tr><td>departmentId / locationId</td><td>FK relations</td></tr>
+        <tr><td>status</td><td>ACTIVE / INACTIVE / RESIGNED / TERMINATED</td></tr>
+        <tr><td>joiningDate / exitDate</td><td>Employment period</td></tr>
+        <tr><td>userId</td><td>Optional link to a system User account</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p><strong>Features:</strong> searchable list with filters (department, location, status), sort dropdown, slide-in details sheet, bulk Excel import, link-to-user association.</p>
+
+  <hr/>
+
+  <h3>7.6 Transfers — <code>/transfers</code></h3>
+
+  <h4>Transfer Workflow</h4>
+  <div class="workflow">
+    <span class="workflow-step">REQUESTED</span>
+    <span class="workflow-arrow">→</span>
+    <span class="workflow-step">APPROVED</span>
+    <span class="workflow-arrow">→</span>
+    <span class="workflow-step">IN_TRANSIT</span>
+    <span class="workflow-arrow">→</span>
+    <span class="workflow-step">COMPLETED</span>
+  </div>
+  <div class="info-box warning"><span class="icon">⚠️</span><p>If <code>CompanySettings.requireTransferApproval = true</code> (default), transfers must go through the approval step before dispatch.</p></div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Transfer Type</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td>LOCATION_TO_LOCATION</td><td>Move asset between physical locations</td></tr>
+        <tr><td>EMPLOYEE_TO_EMPLOYEE</td><td>Re-assign between employees</td></tr>
+        <tr><td>EMPLOYEE_TO_LOCATION</td><td>Return employee asset to a location</td></tr>
+        <tr><td>LOCATION_TO_EMPLOYEE</td><td>Issue from location to employee</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Each transfer gets an auto-generated <code>transferCode</code> (sequential per company, e.g. <code>TRF-001</code>). Full audit trail of requestedBy, approvedBy, completedBy is maintained.</p>
+
+  <hr/>
+
+  <h3>7.7 Locations — <code>/locations</code></h3>
+  <ul>
+    <li><strong>Hierarchical</strong> — parent/child tree (e.g. Building → Floor → Room)</li>
+    <li>Full address fields: addressLine1, city, state, country, postalCode</li>
+    <li>Short <code>code</code> identifier for quick reference</li>
+    <li><code>isActive</code> flag to deactivate without deletion</li>
+  </ul>
+
+  <hr/>
+
+  <h3>7.8 Settings — <code>/settings</code></h3>
+
+  <h4>Company Settings (CompanySettings model)</h4>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Setting</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>assetCodePrefix</td><td>—</td><td>Prefix for auto-generated asset codes</td></tr>
+        <tr><td>autoGenerateAssetCode</td><td>true</td><td>Auto-increment asset code on creation</td></tr>
+        <tr><td>currency</td><td>INR</td><td>Display currency for cost fields</td></tr>
+        <tr><td>dateFormat</td><td>DD-MM-YYYY</td><td>Application-wide date format</td></tr>
+        <tr><td>maintenanceReminderDays</td><td>7</td><td>Days ahead to generate maintenance tickets</td></tr>
+        <tr><td>requireTransferApproval</td><td>true</td><td>Mandate approval step for transfers</td></tr>
+        <tr><td>requireMaintenanceApproval</td><td>false</td><td>Mandate approval for maintenance tickets</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h4>Master Data Tabs</h4>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Tab</th><th>Model</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td>Categories</td><td>AssetCategory</td><td>Asset classification</td></tr>
+        <tr><td>Departments</td><td>Department</td><td>Organisational structure</td></tr>
+        <tr><td>Locations</td><td>Location</td><td>Physical spaces</td></tr>
+        <tr><td>Vendors</td><td>Vendor</td><td>Suppliers and service providers</td></tr>
+        <tr><td>Inventory Categories</td><td>InventoryCategory</td><td>Inventory item classification</td></tr>
+        <tr><td>Units of Measure</td><td>UnitOfMeasure</td><td>Stock quantity units (pcs, kg, litre…)</td></tr>
+        <tr><td>Inventory Locations</td><td>InventoryLocation</td><td>Warehouse / store locations</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <hr/>
+
+  <h3>7.9 Super Admin — <code>/super-admin</code></h3>
+  <div class="info-box note"><span class="icon">🔒</span><p>Accessible only to users with <code>isSuperAdmin = true</code>. Both middleware and the dashboard layout enforce this restriction.</p></div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Page</th><th>Route</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td>Registration Approvals</td><td>/super-admin/registrations</td><td>Review, approve, or reject PENDING user accounts</td></tr>
+        <tr><td>User Management</td><td>/super-admin/users</td><td>View all users across all companies; manage access</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!--  SECTION 8 — API REFERENCE                                    -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="section-header"><div class="num">8</div><h2>API Reference</h2></div>
+  <p>All routes are under <code>/api/*</code> and return JSON. Authentication is enforced via the NextAuth session cookie.</p>
+
+  <h3>Assets</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Method</th><th>Endpoint</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>GET</td><td>/api/assets</td><td>List assets. Supports ?search, ?status, ?categoryId, ?locationId, ?vendorId, ?sort</td></tr>
+        <tr><td>POST</td><td>/api/assets</td><td>Create a new asset</td></tr>
+        <tr><td>GET</td><td>/api/assets/[id]</td><td>Get a single asset with all relations</td></tr>
+        <tr><td>PUT</td><td>/api/assets/[id]</td><td>Update an asset</td></tr>
+        <tr><td>DELETE</td><td>/api/assets/[id]</td><td>Delete an asset</td></tr>
+        <tr><td>POST</td><td>/api/assets/assign</td><td>Assign an asset to an employee / location</td></tr>
+        <tr><td>POST</td><td>/api/assets/return</td><td>Return an assigned asset</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Authentication</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Method</th><th>Endpoint</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>POST</td><td>/api/auth/register</td><td>Register a new user (creates PENDING account)</td></tr>
+        <tr><td>*</td><td>/api/auth/[...nextauth]</td><td>NextAuth handler (sign-in, sign-out, session)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Employees</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Method</th><th>Endpoint</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>GET</td><td>/api/employees</td><td>List employees for the active company</td></tr>
+        <tr><td>POST</td><td>/api/employees</td><td>Create a new employee</td></tr>
+        <tr><td>GET / PUT / DELETE</td><td>/api/employees/[id]</td><td>Single employee CRUD operations</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Departments</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Method</th><th>Endpoint</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>GET</td><td>/api/departments</td><td>List departments</td></tr>
+        <tr><td>POST</td><td>/api/departments</td><td>Create department</td></tr>
+        <tr><td>PUT / DELETE</td><td>/api/departments/[id]</td><td>Update / delete department</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Locations</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Method</th><th>Endpoint</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>GET</td><td>/api/locations</td><td>List locations (with hierarchy)</td></tr>
+        <tr><td>POST</td><td>/api/locations</td><td>Create location</td></tr>
+        <tr><td>PUT / DELETE</td><td>/api/locations/[id]</td><td>Update / delete location</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Maintenance</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Method</th><th>Endpoint</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>GET / POST</td><td>/api/maintenance/tickets</td><td>List or create maintenance tickets</td></tr>
+        <tr><td>GET / PUT / DELETE</td><td>/api/maintenance/tickets/[id]</td><td>Single ticket operations</td></tr>
+        <tr><td>GET / POST</td><td>/api/maintenance/schedules</td><td>List or create maintenance schedules</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Transfers</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Method</th><th>Endpoint</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>GET</td><td>/api/transfers</td><td>List transfers. Supports ?status, ?assetId</td></tr>
+        <tr><td>POST</td><td>/api/transfers</td><td>Create a transfer request</td></tr>
+        <tr><td>GET / PUT</td><td>/api/transfers/[id]</td><td>Get or update (approve / complete / reject) a transfer</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Settings</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Method</th><th>Endpoint</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>GET / PUT</td><td>/api/settings</td><td>Get or update company settings</td></tr>
+        <tr><td>GET / POST</td><td>/api/settings/[domain]</td><td>Master data CRUD. domain = categories, departments, locations, vendors, inventory-categories, units, inventory-locations</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!--  SECTION 9 — KEY COMPONENTS                                   -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="section-header"><div class="num">9</div><h2>Key Components</h2></div>
+
+  <h3>AppSidebar</h3>
+  <p>Navigation sidebar with links to all main modules. Conditionally shows <strong>Approvals (Admin)</strong> and <strong>Users (Admin)</strong> for Super Admins. Footer includes a user dropdown with sign-out.</p>
+
+  <h3>CompanySwitcher</h3>
+  <p>Dropdown in the top header bar for switching between companies the user belongs to. Calls <code>useSession</code>'s <code>update</code> trigger to refresh the JWT with the new <code>activeCompanyId</code> and role.</p>
+
+  <h3>AssetTableClient</h3>
+  <p>Full-featured data table for the assets module featuring:</p>
+  <ul>
+    <li>Client-side search with debounce</li>
+    <li>Dropdown filters (status, category, location, vendor)</li>
+    <li>Custom sort dropdown</li>
+    <li>Row actions: assign, return, edit, delete, transfer</li>
+    <li>Pagination</li>
+  </ul>
+
+  <h3>AddAssetModal</h3>
+  <p>Comprehensive multi-section modal form:</p>
+  <ul>
+    <li><strong>Basic Info:</strong> name, code, tag, category, serial, brand, model</li>
+    <li><strong>Location &amp; Department:</strong> selects from master data</li>
+    <li><strong>Financial:</strong> purchase date/cost, useful life, residual value</li>
+    <li><strong>Warranty:</strong> description and expiry date</li>
+    <li><strong>Condition:</strong> physical and functional status</li>
+    <li><strong>Accessories:</strong> comma-separated accessory list</li>
+    <li><strong>Handover:</strong> optionally create initial assignment inline</li>
+  </ul>
+
+  <h3>MasterDataList / MasterDataModal</h3>
+  <p>Generic reusable pair in Settings that provides a full CRUD list + modal for any master data entity (categories, vendors, departments, units, etc.) without duplicating code.</p>
+
+  <h3>LoginForm / RegisterForm</h3>
+  <ul>
+    <li><strong>LoginForm:</strong> Email + password, calls <code>signIn('credentials', ...)</code></li>
+    <li><strong>RegisterForm:</strong> Name, email, mobile, password, role selection, company selection — submits to <code>/api/auth/register</code></li>
+  </ul>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!--  SECTION 10 — SETUP                                           -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="section-header"><div class="num">10</div><h2>Setup &amp; Running Locally</h2></div>
+
+  <h3>Prerequisites</h3>
+  <ul>
+    <li>Node.js 20+</li>
+    <li>PostgreSQL (local or Docker)</li>
+    <li>npm</li>
+  </ul>
+
+  <h3>Step 1 — Clone &amp; Install</h3>
+<pre><code>git clone &lt;repo-url&gt;
+cd inventory-management
+npm install</code></pre>
+
+  <h3>Step 2 — Configure Environment</h3>
+  <p>Copy <code>.env.example</code> to <code>.env</code> and fill in the required values (see §11).</p>
+
+  <h3>Step 3 — Database Setup</h3>
+<pre><code># Apply all migrations
+npx prisma migrate deploy
+
+# Generate Prisma client
+npx prisma generate
+
+# Seed initial data (companies, super admin, master data)
+npx prisma db seed</code></pre>
+
+  <h3>Step 4 — Run Dev Server</h3>
+<pre><code>npm run dev
+# App available at http://localhost:3000</code></pre>
+
+  <h3>Step 5 — First Login</h3>
+  <p>Use the SUPER_ADMIN credentials created in <code>prisma/seed.ts</code>. The seeded super-admin bypasses the approval workflow.</p>
+
+  <h3>Build for Production</h3>
+<pre><code>npm run build
+npm run start</code></pre>
+
+  <div class="info-box tip"><span class="icon">💡</span><p><strong>Docker Postgres quick start:</strong><br><code>docker run --name asset-db -e POSTGRES_PASSWORD=password -e POSTGRES_DB=assetdb -p 5432:5432 -d postgres:16</code></p></div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!--  SECTION 11 — ENV VARIABLES                                   -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="section-header"><div class="num">11</div><h2>Environment Variables</h2></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Variable</th><th>Description</th><th>Example</th></tr></thead>
+      <tbody>
+        <tr><td>DATABASE_URL</td><td>PostgreSQL connection string</td><td>postgresql://user:pass@localhost:5432/assetdb</td></tr>
+        <tr><td>NEXTAUTH_SECRET</td><td>JWT signing secret (min 32 chars)</td><td>your-random-32-char-secret</td></tr>
+        <tr><td>NEXTAUTH_URL</td><td>Base URL of the application</td><td>http://localhost:3000</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!--  APPENDIX — ENUM REFERENCE                                    -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="section-header"><div class="num">A</div><h2>Appendix — Enum Reference</h2></div>
+
+  <h3>AssetStatus</h3>
+  <div class="enum-list">
+    <span class="enum-tag">ACTIVE</span><span class="enum-tag">ASSIGNED</span><span class="enum-tag">REPAIR</span><span class="enum-tag">DISPOSED</span><span class="enum-tag">LOST</span>
+  </div>
+
+  <h3>HandoverType</h3>
+  <div class="enum-list">
+    <span class="enum-tag">NEW_HIRE</span><span class="enum-tag">REPLACEMENT</span><span class="enum-tag">TEMPORARY_LOAN</span>
+  </div>
+
+  <h3>PhysicalCondition</h3>
+  <div class="enum-list">
+    <span class="enum-tag">BRAND_NEW</span><span class="enum-tag">USED_EXCELLENT</span><span class="enum-tag">USED_FAIR</span>
+  </div>
+
+  <h3>FunctionalStatus</h3>
+  <div class="enum-list">
+    <span class="enum-tag">WORKING</span><span class="enum-tag">MINOR_ISSUES</span>
+  </div>
+
+  <h3>TicketPriority</h3>
+  <div class="enum-list">
+    <span class="enum-tag">LOW</span><span class="enum-tag">MEDIUM</span><span class="enum-tag">HIGH</span><span class="enum-tag">CRITICAL</span>
+  </div>
+
+  <h3>TicketStatus</h3>
+  <div class="enum-list">
+    <span class="enum-tag">OPEN</span><span class="enum-tag">IN_PROGRESS</span><span class="enum-tag">ON_HOLD</span><span class="enum-tag">PENDING_PARTS</span><span class="enum-tag">RESOLVED</span><span class="enum-tag">CLOSED</span><span class="enum-tag">CANCELLED</span>
+  </div>
+
+  <h3>MaintenanceType</h3>
+  <div class="enum-list">
+    <span class="enum-tag">CORRECTIVE</span><span class="enum-tag">PREVENTIVE</span><span class="enum-tag">UPGRADE</span><span class="enum-tag">OTHER</span>
+  </div>
+
+  <h3>TransferStatus</h3>
+  <div class="enum-list">
+    <span class="enum-tag">REQUESTED</span><span class="enum-tag">APPROVED</span><span class="enum-tag">IN_TRANSIT</span><span class="enum-tag">COMPLETED</span><span class="enum-tag">REJECTED</span><span class="enum-tag">CANCELLED</span>
+  </div>
+
+  <h3>TransferType</h3>
+  <div class="enum-list">
+    <span class="enum-tag">LOCATION_TO_LOCATION</span><span class="enum-tag">EMPLOYEE_TO_EMPLOYEE</span><span class="enum-tag">EMPLOYEE_TO_LOCATION</span><span class="enum-tag">LOCATION_TO_EMPLOYEE</span>
+  </div>
+
+  <h3>InventoryItemType</h3>
+  <div class="enum-list">
+    <span class="enum-tag">CONSUMABLE</span><span class="enum-tag">SPARE</span><span class="enum-tag">TOOL</span><span class="enum-tag">OTHER</span>
+  </div>
+
+  <h3>MovementType</h3>
+  <div class="enum-list">
+    <span class="enum-tag">OPENING_STOCK</span><span class="enum-tag">PURCHASE_RECEIPT</span><span class="enum-tag">MANUAL_STOCK_IN</span><span class="enum-tag">MANUAL_STOCK_OUT</span>
+    <span class="enum-tag">ISSUE_TO_EMPLOYEE</span><span class="enum-tag">ISSUE_TO_ASSET</span><span class="enum-tag">RETURN_IN</span>
+    <span class="enum-tag">TRANSFER_IN</span><span class="enum-tag">TRANSFER_OUT</span><span class="enum-tag">ADJUSTMENT_IN</span>
+    <span class="enum-tag">ADJUSTMENT_OUT</span><span class="enum-tag">DAMAGED_OUT</span><span class="enum-tag">SCRAP_OUT</span>
+  </div>
+
+  <h3>Role</h3>
+  <div class="enum-list">
+    <span class="enum-tag">SUPER_ADMIN</span><span class="enum-tag">COMPANY_ADMIN</span><span class="enum-tag">ASSET_MANAGER</span>
+    <span class="enum-tag">INVENTORY_MANAGER</span><span class="enum-tag">MAINTENANCE_MANAGER</span><span class="enum-tag">TECHNICIAN</span>
+    <span class="enum-tag">EMPLOYEE</span><span class="enum-tag">AUDITOR</span><span class="enum-tag">FINANCE_VIEWER</span>
+  </div>
+
+  <h3>UserStatus</h3>
+  <div class="enum-list">
+    <span class="enum-tag">PENDING</span><span class="enum-tag">ACTIVE</span><span class="enum-tag">REJECTED</span>
+  </div>
+</div>
+
+<div class="footer">
+  Asset Management Portal — ABPL / IBA &nbsp;·&nbsp; Documentation v1.0 &nbsp;·&nbsp; Confidential
+</div>
+
+</body>
+</html>
