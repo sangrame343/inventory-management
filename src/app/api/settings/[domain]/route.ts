@@ -88,7 +88,7 @@ export async function POST(
     // Normalize data: convert empty strings to null for all optional/nullable fields
     const normalizedData: any = { companyId };
     
-    for (const [key, value] of Object.entries(validated)) {
+    for (const [key, value] of Object.entries(validated as Record<string, unknown>)) {
       normalizedData[key] = value === "" ? null : value;
     }
 

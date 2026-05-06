@@ -238,7 +238,7 @@ export function EmployeeList({ employees, departments, locations }: EmployeeList
           />
         </div>
         
-        <Select value={deptFilter} onValueChange={setDeptFilter}>
+        <Select value={deptFilter} onValueChange={(val) => setDeptFilter(val || "all")}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Department">
               {deptFilter === "all" ? "All Departments" : departments.find(d => d.id === deptFilter)?.name}
@@ -252,7 +252,7 @@ export function EmployeeList({ employees, departments, locations }: EmployeeList
           </SelectContent>
         </Select>
 
-        <Select value={locFilter} onValueChange={setLocFilter}>
+        <Select value={locFilter} onValueChange={(val) => setLocFilter(val || "all")}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Location">
               {locFilter === "all" ? "All Locations" : locations.find(l => l.id === locFilter)?.name}
@@ -266,7 +266,7 @@ export function EmployeeList({ employees, departments, locations }: EmployeeList
           </SelectContent>
         </Select>
 
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
+        <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val || "all")}>
           <SelectTrigger className="w-[140px]">
             <SelectValue placeholder="Status">
               {statusFilter === "all" ? "All Status" : 
@@ -283,7 +283,7 @@ export function EmployeeList({ employees, departments, locations }: EmployeeList
           </SelectContent>
         </Select>
 
-        <Select value={sortValue} onValueChange={handleSortValueChange}>
+        <Select value={sortValue} onValueChange={(val) => val && handleSortValueChange(val)}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Sort By">
               {sortOptions.find(opt => `${opt.key}-${opt.order}` === sortValue)?.label}

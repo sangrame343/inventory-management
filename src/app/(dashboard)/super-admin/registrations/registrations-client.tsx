@@ -70,8 +70,8 @@ export function RegistrationsClient({
               </Button>
               
               <Dialog open={rejectionOpen} onOpenChange={setRejectionOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="destructive" size="sm">Reject</Button>
+                <DialogTrigger render={<Button variant="destructive" size="sm" />}>
+                  Reject
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>

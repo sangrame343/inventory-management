@@ -2,7 +2,7 @@
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { companySettingsSchema, CompanySettingsInput } from "@/lib/validations/settings";
+import { companySettingsSchema, type CompanySettingsInput } from "@/lib/validations/settings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

@@ -10,6 +10,8 @@ export const companySettingsSchema = z.object({
   autoGenerateAssetCode: z.boolean(),
 });
 
+export type CompanySettingsInput = z.infer<typeof companySettingsSchema>;
+
 // Shared Base
 const baseMasterSchema = z.object({
   name: z.string().min(1, "Name is required").trim(),

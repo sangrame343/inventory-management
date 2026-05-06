@@ -5,7 +5,7 @@ import { EmployeeService } from "@/services/employee-service";
 import { AddAssetModal } from "@/components/assets/add-asset-modal";
 import { AssetImportButton } from "@/components/assets/asset-import-button";
 import { AssetTableClient } from "@/components/assets/asset-table-client";
-import { Prisma } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 
 export default async function AssetsPage(props: {
   searchParams: Promise<{

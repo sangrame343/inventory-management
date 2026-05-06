@@ -93,8 +93,9 @@ export class LocationService {
     let currentId: string | null = id;
 
     while (currentId) {
+      const targetId: string = currentId;
       const loc = await db.location.findUnique({
-        where: { id: currentId },
+        where: { id: targetId },
         select: { id: true, name: true, parentLocationId: true, companyId: true },
       });
 

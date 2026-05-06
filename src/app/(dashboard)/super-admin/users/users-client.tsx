@@ -79,8 +79,8 @@ export function UsersClient({ users }: { users: any[] }) {
         </TableCell>
         <TableCell className="text-right space-x-2">
            <Dialog open={editOpen} onOpenChange={(open) => { setEditOpen(open); setErrorMsg(""); }}>
-             <DialogTrigger asChild>
-               <Button variant="outline" size="sm">Edit</Button>
+             <DialogTrigger render={<Button variant="outline" size="sm" />}>
+               Edit
              </DialogTrigger>
              <DialogContent>
                <DialogHeader>
@@ -118,8 +118,8 @@ export function UsersClient({ users }: { users: any[] }) {
            </Dialog>
 
            <Dialog open={deleteOpen} onOpenChange={(open) => { setDeleteOpen(open); setErrorMsg(""); }}>
-             <DialogTrigger asChild>
-               <Button variant="destructive" size="sm">Delete</Button>
+             <DialogTrigger render={<Button variant="destructive" size="sm" />}>
+               Delete
              </DialogTrigger>
              <DialogContent>
                <DialogHeader>
