@@ -36,6 +36,7 @@ export function InventoryTable({
   onAdjustStock,
   onStockIn,
   onStockOut,
+  onIssue,
 }: {
   items: PopulatedItem[];
   onEdit: (item: PopulatedItem) => void;

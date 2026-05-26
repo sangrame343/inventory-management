@@ -28,6 +28,9 @@ export function InventoryDashboard({
   categories,
   locations,
   units,
+  employees,
+  assetCategories,
+  departments,
 }: {
   initialItems: PopulatedItem[];
   categories: InventoryCategory[];

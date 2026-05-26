@@ -163,8 +163,12 @@ export function AssetTableClient({
     startTransition(async () => {
       try {
         const res = await duplicateAsset(id);
-        toast.success(`Asset "${name}" duplicated`);
-        router.push(`/assets/${res.id}`);
+        if (res && "id" in res) {
+          toast.success(`Asset "${name}" duplicated`);
+          router.push(`/assets/${res.id}`);
+        } else if (res && "message" in res) {
+          toast.success(res.message);
+        }
       } catch (error) {
         toast.error(
           error instanceof Error ? error.message : "Failed to duplicate asset"

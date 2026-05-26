@@ -101,7 +101,7 @@ export function IssueInventoryModal({
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label>Source Location</Label>
-              <Select value={locationId} onValueChange={setLocationId}>
+              <Select value={locationId} onValueChange={(val) => setLocationId(val ?? "")}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select location">
                     {locations.find(loc => loc.id === locationId)?.name}
@@ -119,7 +119,7 @@ export function IssueInventoryModal({
 
             <div className="space-y-2">
               <Label>Employee</Label>
-              <Select value={employeeId} onValueChange={setEmployeeId}>
+              <Select value={employeeId} onValueChange={(val) => setEmployeeId(val ?? "")}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select employee">
                     {employees.find(emp => emp.id === employeeId)?.name}
@@ -163,7 +163,7 @@ export function IssueInventoryModal({
               <Checkbox 
                 id="registerAsAsset" 
                 checked={registerAsAsset} 
-                onCheckedChange={(checked) => setRegisterAsAsset(!!checked)} 
+                onChange={(e) => setRegisterAsAsset(e.target.checked)} 
               />
               <Label htmlFor="registerAsAsset" className="cursor-pointer font-semibold">
                 Register as trackable asset?
@@ -177,7 +177,7 @@ export function IssueInventoryModal({
               <div className="grid gap-4 pt-2">
                 <div className="space-y-2">
                   <Label>Asset Category</Label>
-                  <Select value={categoryId} onValueChange={setCategoryId}>
+                  <Select value={categoryId} onValueChange={(val) => setCategoryId(val ?? "")}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select category">
                         {categories.find(c => c.id === categoryId)?.name}
@@ -195,7 +195,7 @@ export function IssueInventoryModal({
 
                 <div className="space-y-2">
                   <Label>Purchased From Company</Label>
-                  <Select value={purchasedFromDepartmentId} onValueChange={setPurchasedFromDepartmentId}>
+                  <Select value={purchasedFromDepartmentId} onValueChange={(val) => setPurchasedFromDepartmentId(val ?? "")}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select company">
                         {departments.find(d => d.id === purchasedFromDepartmentId)?.name}

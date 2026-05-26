@@ -9,8 +9,8 @@ interface QuickActionsProps {
 }
 
 export function QuickActions({ role }: QuickActionsProps) {
-  const isAdmin = role === Role.SUPER_ADMIN || role === Role.COMPANY_ADMIN;
-  const isManager = isAdmin || role === Role.ASSET_MANAGER || role === Role.MAINTENANCE_MANAGER;
+  const isAdmin = role === Role.SUPER_ADMIN || role === Role.ADMIN;
+  const isManager = role === Role.SUPER_ADMIN || role === Role.ADMIN;
 
   const actions = [
     {

@@ -19,8 +19,12 @@ export function AssetDuplicateButton({ assetId }: AssetDuplicateButtonProps) {
     try {
       setIsPending(true);
       const res = await duplicateAsset(assetId);
-      toast.success("Asset duplicated successfully");
-      router.push(`/assets/${res.id}`);
+      if (res && "id" in res) {
+        toast.success("Asset duplicated successfully");
+        router.push(`/assets/${res.id}`);
+      } else if (res && "message" in res) {
+        toast.success(res.message);
+      }
     } catch (error: any) {
       toast.error(error.message || "Failed to duplicate asset");
     } finally {

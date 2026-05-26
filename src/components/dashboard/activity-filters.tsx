@@ -39,7 +39,7 @@ export function ActivityFilters({ filters, onFilterChange }: ActivityFiltersProp
         />
       </div>
       
-      <Select value={filters.module} onValueChange={(v) => handleChange("module", v)}>
+      <Select value={filters.module} onValueChange={(v) => handleChange("module", v ?? "")}>
         <SelectTrigger className="w-[110px] h-9 text-xs">
           <SelectValue placeholder="Module" />
         </SelectTrigger>
@@ -53,7 +53,7 @@ export function ActivityFilters({ filters, onFilterChange }: ActivityFiltersProp
         </SelectContent>
       </Select>
 
-      <Select value={filters.action} onValueChange={(v) => handleChange("action", v)}>
+      <Select value={filters.action} onValueChange={(v) => handleChange("action", v ?? "")}>
         <SelectTrigger className="w-[110px] h-9 text-xs">
           <SelectValue placeholder="Action" />
         </SelectTrigger>
@@ -68,7 +68,7 @@ export function ActivityFilters({ filters, onFilterChange }: ActivityFiltersProp
         </SelectContent>
       </Select>
 
-      <Select value={filters.period} onValueChange={(v) => handleChange("period", v)}>
+      <Select value={filters.period} onValueChange={(v) => handleChange("period", v ?? "")}>
         <SelectTrigger className="w-[100px] h-9 text-xs">
           <SelectValue placeholder="Period" />
         </SelectTrigger>
