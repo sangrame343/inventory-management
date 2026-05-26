@@ -9,6 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
+
 
 export function RegistrationsClient({ 
   registrations,
@@ -29,9 +31,20 @@ export function RegistrationsClient({
 
   const handleApprove = async (id: string) => {
     setLoadingAction(`approve-${id}`);
-    await approveRegistration(id);
-    setLoadingAction(null);
+    try {
+      const res = await approveRegistration(id);
+      if (res.error) {
+        toast.error(res.error);
+      } else {
+        toast.success("Registration approved successfully");
+      }
+    } catch (error) {
+      toast.error("Failed to approve registration");
+    } finally {
+      setLoadingAction(null);
+    }
   };
+
 
   const RegistrationRow = ({ user }: { user: any }) => {
     const [remarks, setRemarks] = useState("");
@@ -39,10 +52,21 @@ export function RegistrationsClient({
 
     const handleReject = async () => {
       setLoadingAction(`reject-${user.id}`);
-      await rejectRegistration(user.id, remarks);
-      setLoadingAction(null);
-      setRejectionOpen(false);
+      try {
+        const res = await rejectRegistration(user.id, remarks);
+        if (res.error) {
+          toast.error(res.error);
+        } else {
+          toast.success("Registration rejected successfully");
+          setRejectionOpen(false);
+        }
+      } catch (error) {
+        toast.error("Failed to reject registration");
+      } finally {
+        setLoadingAction(null);
+      }
     };
+
 
     return (
       <TableRow>
@@ -64,10 +88,11 @@ export function RegistrationsClient({
                 variant="default" 
                 size="sm" 
                 onClick={() => handleApprove(user.id)}
-                disabled={loadingAction === `approve-${user.id}`}
+                loading={loadingAction === `approve-${user.id}`}
               >
                 Approve
               </Button>
+
               
               <Dialog open={rejectionOpen} onOpenChange={setRejectionOpen}>
                 <DialogTrigger render={<Button variant="destructive" size="sm" />}>
@@ -87,7 +112,8 @@ export function RegistrationsClient({
                   />
                   <DialogFooter>
                     <Button variant="outline" onClick={() => setRejectionOpen(false)}>Cancel</Button>
-                    <Button variant="destructive" onClick={handleReject} disabled={loadingAction === `reject-${user.id}`}>Confirm Reject</Button>
+                    <Button variant="destructive" onClick={handleReject} loading={loadingAction === `reject-${user.id}`}>Confirm Reject</Button>
+
                   </DialogFooter>
                 </DialogContent>
               </Dialog>

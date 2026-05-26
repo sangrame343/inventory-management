@@ -4,6 +4,7 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { AssetAssignModal } from "@/components/assets/asset-assign-modal";
 import { AssetReturnModal } from "@/components/assets/asset-return-modal";
+import { AssetDuplicateButton } from "@/components/assets/asset-duplicate-button";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,7 @@ export default async function AssetDetailPage({
     include: {
       category: true,
       department: true,
+      purchasedFromDepartment: true,
       location: true,
       vendor: true,
       assignments: {
@@ -83,6 +85,7 @@ export default async function AssetDetailPage({
           ) : (
             <AssetAssignModal assetId={asset.id} assetName={asset.name} />
           )}
+          <AssetDuplicateButton assetId={asset.id} />
           <Button
             variant="outline"
             render={<Link href={`/assets/${asset.id}/edit`}>Edit</Link>}
@@ -129,6 +132,13 @@ export default async function AssetDetailPage({
               <div className="text-sm text-muted-foreground">Location</div>
               <div className="mt-1 font-medium">
                 {asset.location?.name || "N/A"}
+              </div>
+            </div>
+
+            <div>
+              <div className="text-sm text-muted-foreground">Purchased From Company</div>
+              <div className="mt-1 font-medium">
+                {asset.purchasedFromDepartment?.name || "N/A"}
               </div>
             </div>
 

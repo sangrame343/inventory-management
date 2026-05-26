@@ -253,16 +253,22 @@ export function EmployeeForm({
                         <SelectTrigger>
                           <SelectValue placeholder="Select status">
                             {field.value === "ACTIVE" ? "Active" : 
-                             field.value === "INACTIVE" ? "Inactive" : 
+                             field.value === "INACTIVE" ? "Inactive / Not Active" : 
                              field.value === "ON_LEAVE" ? "On Leave" : 
-                             field.value === "TERMINATED" ? "Terminated" : null}
+                             field.value === "ON_HOLD" ? "On Hold" : 
+                             field.value === "RESIGNED" ? "Resigned" : 
+                             field.value === "LEFT" ? "Left" : 
+                             field.value === "TERMINATED" ? "Terminated" : field.value}
                           </SelectValue>
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="ACTIVE">Active</SelectItem>
-                        <SelectItem value="INACTIVE">Inactive</SelectItem>
+                        <SelectItem value="INACTIVE">Inactive / Not Active</SelectItem>
                         <SelectItem value="ON_LEAVE">On Leave</SelectItem>
+                        <SelectItem value="ON_HOLD">On Hold</SelectItem>
+                        <SelectItem value="RESIGNED">Resigned</SelectItem>
+                        <SelectItem value="LEFT">Left</SelectItem>
                         <SelectItem value="TERMINATED">Terminated</SelectItem>
                       </SelectContent>
                     </Select>

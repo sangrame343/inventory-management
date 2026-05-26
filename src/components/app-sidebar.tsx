@@ -55,15 +55,41 @@ export function AppSidebar() {
   const { data: session } = useSession();
   const userName = session?.user?.name || "User";
   const isSuperAdmin = (session?.user as any)?.isSuperAdmin;
+  const role = (session?.user as any)?.role as string;
 
   const handleSignOut = () => {
     signOut({ callbackUrl: "/login" });
   };
 
-  const navItems = [...mainNav];
+  // Build nav based on role
+  const navItems = mainNav.filter(item => {
+    if (role === "USER") {
+        // Users only see Dashboard and Assets
+        return ["Dashboard", "Assets"].includes(item.title);
+    }
+    return true;
+  });
+
+  // Add role-specific items
+  if (role === "SUPER_ADMIN") {
+    navItems.push({
+      title: "Approvals",
+      url: "/approvals",
+      icon: ShieldCheck,
+    });
+  }
+
+  if (role === "ADMIN") {
+    navItems.push({
+      title: "My Requests",
+      url: "/my-requests",
+      icon: Activity,
+    });
+  }
+
   if (isSuperAdmin) {
     navItems.push({
-      title: "Approvals (Admin)",
+      title: "Registrations",
       url: "/super-admin/registrations",
       icon: ShieldCheck,
     });
@@ -73,6 +99,7 @@ export function AppSidebar() {
       icon: Users,
     });
   }
+
 
   return (
     <Sidebar variant="inset">

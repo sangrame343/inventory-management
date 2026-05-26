@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import * as xlsx from "xlsx";
 import { ImportResult, ImportResultRow } from "@/components/ui/import-modal";
+import { generateAssetCode, generateAssetTag } from "@/lib/asset-utils";
 
 export async function importAssets(formData: FormData): Promise<{ success: boolean; result?: ImportResult; error?: string }> {
   try {
@@ -32,14 +33,20 @@ export async function importAssets(formData: FormData): Promise<{ success: boole
     }
 
     // Pre-fetch all necessary company data for validation to avoid N+1 queries during validation
-    const [categories, departments, locations, vendors, existingAssets, employees] = await Promise.all([
+    const [categories, departments, locations, vendors, existingAssets, employees, settings, company] = await Promise.all([
       db.assetCategory.findMany({ where: { companyId } }),
       db.department.findMany({ where: { companyId } }),
       db.location.findMany({ where: { companyId } }),
       db.vendor.findMany({ where: { companyId } }),
       db.asset.findMany({ where: { companyId }, select: { assetTag: true, assetCode: true } }),
-      db.employee.findMany({ where: { companyId }, select: { id: true, employeeCode: true, email: true, userId: true } })
+      db.employee.findMany({ where: { companyId }, select: { id: true, employeeCode: true, email: true, userId: true } }),
+      db.companySettings.findUnique({ where: { companyId } }),
+      db.company.findUnique({ where: { id: companyId }, select: { code: true, name: true, lastAssetSequence: true } })
     ]);
+
+    if (!company) {
+      return { success: false, error: "Company context not found" };
+    }
 
     const categoryMap = new Map(categories.filter(c => c.isActive).map(c => [c.name.toLowerCase(), c.id]));
     const departmentMap = new Map(departments.filter(d => d.isActive).map(d => [d.name.toLowerCase(), d.id]));
@@ -58,6 +65,9 @@ export async function importAssets(formData: FormData): Promise<{ success: boole
     let successCount = 0;
     let skippedCount = 0;
     let failedCount = 0;
+    
+    const processedTags = new Set<string>();
+    const processedCodes = new Set<string>();
 
     const assetsToInsert: any[] = [];
     const handoversToCreate: any[] = [];
@@ -92,22 +102,36 @@ export async function importAssets(formData: FormData): Promise<{ success: boole
       const code = String(row["Asset Code"] || "").trim();
       const categoryName = String(row["Asset Category"] || row["Category"] || "").trim();
       
-      if (!tag || !name || !categoryName) {
-        results.push({ rowNumber: rowNum, status: "failed", reason: "Missing required fields (Asset Tag, Asset Name, Category)" });
+      const isTagRequired = !settings?.autoGenerateAssetCode;
+      
+      if ((isTagRequired && !tag) || !name || !categoryName) {
+        results.push({ 
+          rowNumber: rowNum, 
+          status: "failed", 
+          reason: `Missing required fields (${isTagRequired ? "Asset Tag, " : ""}Asset Name, Category)` 
+        });
         failedCount++;
         continue;
       }
 
-      if (existingTags.has(tag.toLowerCase())) {
-        results.push({ rowNumber: rowNum, status: "skipped", reason: `Asset Tag '${tag}' already exists` });
-        skippedCount++;
-        continue;
+      if (tag) {
+        const tagLower = tag.toLowerCase();
+        if (existingTags.has(tagLower) || processedTags.has(tagLower)) {
+          results.push({ rowNumber: rowNum, status: "skipped", reason: `Asset Tag '${tag}' already exists or is duplicate in file` });
+          skippedCount++;
+          continue;
+        }
+        processedTags.add(tagLower);
       }
 
-      if (code && existingCodes.has(code.toLowerCase())) {
-         results.push({ rowNumber: rowNum, status: "skipped", reason: `Asset Code '${code}' already exists` });
-         skippedCount++;
-         continue;
+      if (code) {
+        const codeLower = code.toLowerCase();
+        if (existingCodes.has(codeLower) || processedCodes.has(codeLower)) {
+          results.push({ rowNumber: rowNum, status: "skipped", reason: `Asset Code '${code}' already exists or is duplicate in file` });
+          skippedCount++;
+          continue;
+        }
+        processedCodes.add(codeLower);
       }
 
       const categoryId = categoryMap.get(categoryName.toLowerCase());
@@ -123,6 +147,17 @@ export async function importAssets(formData: FormData): Promise<{ success: boole
         departmentId = departmentMap.get(String(deptVal).trim().toLowerCase());
         if (!departmentId) {
           results.push({ rowNumber: rowNum, status: "failed", reason: `Asset Department '${deptVal}' does not exist or is inactive` });
+          failedCount++;
+          continue;
+        }
+      }
+
+      let purchasedFromDepartmentId = null;
+      const purchasedFromVal = row["Purchased From Company"];
+      if (purchasedFromVal) {
+        purchasedFromDepartmentId = departmentMap.get(String(purchasedFromVal).trim().toLowerCase());
+        if (!purchasedFromDepartmentId) {
+          results.push({ rowNumber: rowNum, status: "failed", reason: `Purchased From Company '${purchasedFromVal}' does not exist or is inactive` });
           failedCount++;
           continue;
         }
@@ -219,11 +254,12 @@ export async function importAssets(formData: FormData): Promise<{ success: boole
 
       const assetRow = {
         companyId,
-        assetTag: tag,
+        assetTag: tag || "",
         name,
         categoryId,
         assetCode: code || null,
         departmentId,
+        purchasedFromDepartmentId,
         locationId,
         vendorId,
         serialNumber: String(row["Serial Number / Service Tag"] || row["Serial Number"] || "").trim() || null,
@@ -265,13 +301,43 @@ export async function importAssets(formData: FormData): Promise<{ success: boole
     if (assetsToInsert.length > 0) {
       try {
          await db.$transaction(async (tx) => {
-             // 1. Create assets
+             // 1. Generate code and tag if needed
+             let lastAssetSequence = company.lastAssetSequence;
+             for (const asset of assetsToInsert) {
+                 if (settings?.autoGenerateAssetCode && (!asset.assetCode || !asset.assetTag)) {
+                     lastAssetSequence++;
+                     const cat = categories.find(c => c.id === asset.categoryId);
+                     const dept = departments.find(d => d.id === asset.purchasedFromDepartmentId);
+                      const genCtx = {
+                        companyCode: company.code,
+                        companyName: company.name,
+                        purchasedFromCode: dept?.code || null,
+                        purchasedFromName: dept?.name || null,
+                        categoryCode: cat?.code || null,
+                        categoryName: cat?.name || "",
+                        sequence: lastAssetSequence,
+                      };
+                     
+                     if (!asset.assetCode) asset.assetCode = generateAssetCode(genCtx);
+                     if (!asset.assetTag) asset.assetTag = generateAssetTag(genCtx);
+                 }
+             }
+
+             // Update the last sequence on company record
+             if (lastAssetSequence !== company.lastAssetSequence) {
+                 await tx.company.update({
+                     where: { id: companyId },
+                     data: { lastAssetSequence }
+                 });
+             }
+
+             // 2. Create assets
              const assetPayload = assetsToInsert.map(({ _rowNum, ...data }) => data);
              await tx.asset.createMany({
                  data: assetPayload
              });
              
-             // 2. Fetch created assets to get IDs for handovers
+             // 3. Fetch created assets to get IDs for handovers
              const createdAssets = await tx.asset.findMany({
                  where: {
                      companyId,
@@ -282,21 +348,25 @@ export async function importAssets(formData: FormData): Promise<{ success: boole
 
              const tagToIdMap = new Map(createdAssets.map(a => [a.assetTag.toLowerCase(), a.id]));
 
-             // 3. Create handovers
+             // 4. Create handovers
              if (handoversToCreate.length > 0) {
-                 const assignmentPayload = handoversToCreate.map(({ _tag, _rowNum, ...data }) => ({
-                     ...data,
-                     companyId,
-                     assetId: tagToIdMap.get(_tag.toLowerCase()) as string,
-                     transactionId: `TXN-IMP-${Date.now()}-${_rowNum}`
-                 }));
+                 const assignmentPayload = handoversToCreate.map(({ _tag, _rowNum, ...data }) => {
+                     const correspondingAsset = assetsToInsert.find(a => a._rowNum === _rowNum);
+                     const finalTag = correspondingAsset ? correspondingAsset.assetTag : _tag;
+                     return {
+                         ...data,
+                         companyId,
+                         assetId: tagToIdMap.get(finalTag.toLowerCase()) as string,
+                         transactionId: `TXN-IMP-${Date.now()}-${_rowNum}`
+                     };
+                 });
 
                  await tx.assetAssignment.createMany({
                      data: assignmentPayload
                  });
              }
 
-             // 4. Log activity
+             // 5. Log activity
              await tx.activityLog.create({
                  data: {
                      companyId,

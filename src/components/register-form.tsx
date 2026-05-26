@@ -119,11 +119,13 @@ export function RegisterForm({ companies }: { companies: { id: string; name: str
                 <SelectValue placeholder="Select a role" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={Role.COMPANY_ADMIN}>Admin (Company Admin)</SelectItem>
-                <SelectItem value={Role.ASSET_MANAGER}>Manager (Asset Manager)</SelectItem>
+                <SelectItem value={Role.SUPER_ADMIN}>Super Admin (Full Access)</SelectItem>
+                <SelectItem value={Role.ADMIN}>Admin (Actions require approval)</SelectItem>
+                <SelectItem value={Role.USER}>Manager (View only)</SelectItem>
               </SelectContent>
             </Select>
           </div>
+
 
         </CardContent>
         <CardFooter className="flex flex-col space-y-4">

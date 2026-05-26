@@ -4,6 +4,8 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
+import { Role } from "@prisma/client";
+
 
 async function isSuperAdminReq() {
   const session = await auth();
@@ -51,13 +53,17 @@ export async function approveRegistration(userId: string) {
 
     // Assign company and set status to ACTIVE
     await db.$transaction(async (tx) => {
+      const isSuperAdminRequested = userToApprove.requestedRole === Role.SUPER_ADMIN;
+
       await tx.user.update({
         where: { id: userId },
         data: {
           status: "ACTIVE",
           activeCompanyId: userToApprove.requestedCompanyId,
+          isSuperAdmin: isSuperAdminRequested ? true : userToApprove.isSuperAdmin,
         },
       });
+
 
       // Upsert the CompanyUser
       await tx.companyUser.upsert({

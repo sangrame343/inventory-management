@@ -44,7 +44,7 @@ export function MasterDataModal({ isOpen, onClose, domain, label, item, onSucces
          postalCode: "",
        } : {}),
        ...(domain === "units-of-measure" ? { symbol: "" } : {}),
-       ...(domain === "inventory-locations" ? { code: "" } : {}),
+       ...(domain === "inventory-locations" || domain === "departments" || domain === "asset-categories" ? { code: "" } : {}),
     },
   });
 
@@ -66,7 +66,7 @@ export function MasterDataModal({ isOpen, onClose, domain, label, item, onSucces
           postalCode: item.postalCode || "",
         } : {}),
         ...(domain === "units-of-measure" ? { symbol: item.symbol || "" } : {}),
-        ...(domain === "inventory-locations" ? { code: item.code || "" } : {}),
+        ...(domain === "inventory-locations" || domain === "departments" || domain === "asset-categories" ? { code: item.code || "" } : {}),
       });
     } else {
       form.reset({
@@ -86,7 +86,7 @@ export function MasterDataModal({ isOpen, onClose, domain, label, item, onSucces
           postalCode: "",
         } : {}),
         ...(domain === "units-of-measure" ? { symbol: "" } : {}),
-        ...(domain === "inventory-locations" ? { code: "" } : {}),
+        ...(domain === "inventory-locations" || domain === "departments" || domain === "asset-categories" ? { code: "" } : {}),
       });
     }
   }, [item, form, domain]);
@@ -126,6 +126,7 @@ export function MasterDataModal({ isOpen, onClose, domain, label, item, onSucces
   const isVendor = domain === "vendors";
   const isUOM = domain === "units-of-measure";
   const isLocation = domain === "inventory-locations";
+  const hasCode = domain === "inventory-locations" || domain === "departments" || domain === "asset-categories";
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -163,12 +164,12 @@ export function MasterDataModal({ isOpen, onClose, domain, label, item, onSucces
               </div>
             )}
 
-            {isLocation && (
+            {hasCode && (
               <div className="space-y-2">
                 <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Code (Optional)</Label>
                 <Input 
                   {...form.register("code")} 
-                  placeholder="e.g. WH-01" 
+                  placeholder="e.g. WH-01, HR, IT" 
                   className="h-12 rounded-xl bg-muted/30 border-none shadow-inner font-mono font-bold focus-visible:ring-primary"
                 />
               </div>

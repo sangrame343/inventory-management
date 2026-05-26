@@ -11,6 +11,7 @@ import { InventoryTable } from "./inventory-table";
 import { AddItemModal } from "./add-item-modal";
 import { StockAdjustmentModal } from "./stock-adjustment-modal";
 import { StockMovementModal } from "./stock-movement-modal";
+import { IssueInventoryModal } from "./issue-inventory-modal";
 import { InventoryImportButton } from "./inventory-import-button";
 
 import type { InventoryItem, InventoryBalance, InventoryCategory, InventoryLocation, UnitOfMeasure } from "@prisma/client";
@@ -32,6 +33,9 @@ export function InventoryDashboard({
   categories: InventoryCategory[];
   locations: InventoryLocation[];
   units: UnitOfMeasure[];
+  employees: { id: string; name: string }[];
+  assetCategories: { id: string; name: string }[];
+  departments: { id: string; name: string }[];
 }) {
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -41,6 +45,7 @@ export function InventoryDashboard({
   const [editingItem, setEditingItem] = useState<PopulatedItem | null>(null);
   const [adjustingStockItem, setAdjustingStockItem] = useState<PopulatedItem | null>(null);
   const [movingStockItem, setMovingStockItem] = useState<{item: PopulatedItem, direction: "IN" | "OUT"} | null>(null);
+  const [issuingStockItem, setIssuingStockItem] = useState<PopulatedItem | null>(null);
 
   const filteredItems = useMemo(() => {
     let list = initialItems;
@@ -130,6 +135,7 @@ export function InventoryDashboard({
           onAdjustStock={(i) => setAdjustingStockItem(i)}
           onStockIn={(i) => setMovingStockItem({item: i, direction: "IN"})}
           onStockOut={(i) => setMovingStockItem({item: i, direction: "OUT"})}
+          onIssue={(i) => setIssuingStockItem(i)}
         />
       </div>
 
@@ -162,6 +168,18 @@ export function InventoryDashboard({
           item={movingStockItem.item}
           direction={movingStockItem.direction}
           locations={locations}
+        />
+      )}
+
+      {issuingStockItem && (
+        <IssueInventoryModal 
+          open={!!issuingStockItem}
+          onOpenChange={(o) => {if(!o) setIssuingStockItem(null)}}
+          item={issuingStockItem}
+          locations={locations}
+          employees={employees}
+          categories={assetCategories}
+          departments={departments}
         />
       )}
     </div>

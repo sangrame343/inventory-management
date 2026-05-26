@@ -41,6 +41,7 @@ interface Asset {
   condition: string | null;
   categoryId: string;
   departmentId: string | null;
+  purchasedFromDepartmentId: string | null;
   locationId: string | null;
   vendorId: string | null;
 }
@@ -90,6 +91,7 @@ export function EditAssetForm({
   // Relations
   const [categoryId, setCategoryId] = useState(asset.categoryId);
   const [departmentId, setDepartmentId] = useState(asset.departmentId || "none");
+  const [purchasedFromDepartmentId, setPurchasedFromDepartmentId] = useState(asset.purchasedFromDepartmentId || "none");
   const [locationId, setLocationId] = useState(asset.locationId || "none");
   const [vendorId, setVendorId] = useState(asset.vendorId || "none");
 
@@ -113,6 +115,7 @@ export function EditAssetForm({
         condition,
         categoryId,
         departmentId: departmentId === "none" ? null : departmentId,
+        purchasedFromDepartmentId: purchasedFromDepartmentId === "none" ? null : purchasedFromDepartmentId,
         locationId: locationId === "none" ? null : locationId,
         vendorId: vendorId === "none" ? null : vendorId,
       };
@@ -350,6 +353,25 @@ export function EditAssetForm({
               <SelectTrigger id="departmentId">
                 <SelectValue placeholder="Select department">
                   {departments.find(d => d.id === departmentId)?.name || (departmentId === "none" ? "None" : null)}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None</SelectItem>
+                {departments.map((dept) => (
+                  <SelectItem key={dept.id} value={dept.id}>
+                    {dept.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="purchasedFromDepartmentId">Purchased From Company</Label>
+            <Select value={purchasedFromDepartmentId} onValueChange={(val) => setPurchasedFromDepartmentId(val || "none")}>
+              <SelectTrigger id="purchasedFromDepartmentId">
+                <SelectValue placeholder="Select company">
+                  {departments.find(d => d.id === purchasedFromDepartmentId)?.name || (purchasedFromDepartmentId === "none" ? "None" : null)}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>

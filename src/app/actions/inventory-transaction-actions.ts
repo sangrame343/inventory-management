@@ -3,7 +3,8 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
-import { MovementDirection, MovementType } from "@prisma/client";
+import { MovementDirection, MovementType, AssetStatus } from "@prisma/client";
+import { generateAssetCode, generateAssetTag } from "@/lib/asset-utils";
 
 async function getSessionContext() {
   const session = await auth();
@@ -191,6 +192,138 @@ export async function adjustStock(input: AdjustStockInput) {
 
   revalidatePath("/inventory");
   revalidatePath(`/inventory/${input.itemId}`);
+  return result;
+}
+
+export type IssueInventoryInput = {
+  itemId: string;
+  locationId: string;
+  employeeId: string;
+  quantity: number;
+  notes?: string;
+  registerAsAsset?: boolean;
+  assetData?: {
+    categoryId: string;
+    purchasedFromDepartmentId?: string;
+  };
+};
+
+export async function issueInventoryToEmployee(input: IssueInventoryInput) {
+  const { companyId, userId } = await getSessionContext();
+
+  if (input.quantity <= 0) {
+    throw new Error("Quantity must be greater than zero.");
+  }
+
+  const result = await db.$transaction(async (tx) => {
+    // 1. Check balance
+    const balance = await tx.inventoryBalance.findUnique({
+      where: {
+        companyId_itemId_locationId: {
+          companyId,
+          itemId: input.itemId,
+          locationId: input.locationId,
+        },
+      },
+    });
+
+    if (!balance || balance.availableQty < input.quantity) {
+      throw new Error(`Insufficient stock. Available: ${balance?.availableQty || 0}`);
+    }
+
+    // 2. Reduce balance
+    const newQoh = balance.quantityOnHand - input.quantity;
+    const updatedBalance = await tx.inventoryBalance.update({
+      where: { id: balance.id },
+      data: {
+        quantityOnHand: newQoh,
+        availableQty: newQoh - balance.reservedQty,
+      },
+    });
+
+    // 3. Create transaction
+    const txn = await tx.inventoryTransaction.create({
+      data: {
+        companyId,
+        itemId: input.itemId,
+        locationId: input.locationId,
+        direction: "OUT",
+        movementType: "ISSUE_TO_EMPLOYEE",
+        quantity: input.quantity,
+        balanceAfter: newQoh,
+        notes: input.notes,
+        createdById: userId,
+        employeeId: input.employeeId,
+      },
+    });
+
+    // 4. Optional Asset Registration
+    let asset = null;
+    if (input.registerAsAsset && input.assetData) {
+      const item = await tx.inventoryItem.findUnique({
+        where: { id: input.itemId },
+        select: { name: true },
+      });
+
+      // Increment sequence
+      const company = await tx.company.update({
+        where: { id: companyId },
+        data: { lastAssetSequence: { increment: 1 } },
+        select: { code: true, name: true, lastAssetSequence: true },
+      });
+
+      const [dept, cat] = await Promise.all([
+        input.assetData.purchasedFromDepartmentId
+          ? tx.department.findUnique({ where: { id: input.assetData.purchasedFromDepartmentId } })
+          : null,
+        tx.assetCategory.findUnique({ where: { id: input.assetData.categoryId } }),
+      ]);
+
+      if (!cat) throw new Error("Asset category not found");
+
+      const genCtx = {
+        companyCode: company.code,
+        companyName: company.name,
+        purchasedFromCode: dept?.code,
+        purchasedFromName: dept?.name,
+        categoryCode: cat.code,
+        categoryName: cat.name,
+        sequence: company.lastAssetSequence,
+      };
+
+      asset = await tx.asset.create({
+        data: {
+          companyId,
+          categoryId: input.assetData.categoryId,
+          purchasedFromDepartmentId: input.assetData.purchasedFromDepartmentId || null,
+          name: item?.name || "New Asset from Inventory",
+          assetCode: generateAssetCode(genCtx),
+          assetTag: generateAssetTag(genCtx),
+          status: AssetStatus.ASSIGNED,
+          condition: "New",
+        },
+      });
+
+      // Create Assignment
+      await tx.assetAssignment.create({
+        data: {
+          companyId,
+          assetId: asset.id,
+          employeeId: input.employeeId,
+          assignedById: userId,
+          assignedAt: new Date(),
+          transactionId: `TXN-ISSUE-${Date.now()}`,
+          notes: `Created from inventory issue: ${txn.id}`,
+        },
+      });
+    }
+
+    return { transaction: txn, asset };
+  });
+
+  revalidatePath("/inventory");
+  revalidatePath(`/inventory/${input.itemId}`);
+  revalidatePath("/assets");
   return result;
 }
 

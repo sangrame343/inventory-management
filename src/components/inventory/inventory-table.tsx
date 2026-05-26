@@ -42,6 +42,7 @@ export function InventoryTable({
   onAdjustStock: (item: PopulatedItem) => void;
   onStockIn: (item: PopulatedItem) => void;
   onStockOut: (item: PopulatedItem) => void;
+  onIssue: (item: PopulatedItem) => void;
 }) {
 
   return (
@@ -100,6 +101,9 @@ export function InventoryTable({
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => onStockOut(item)}>
                             Stock Out
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => onIssue(item)} className="text-blue-600 focus:text-blue-600 font-semibold">
+                            Issue to Employee
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => onAdjustStock(item)}>
                             Adjust Stock

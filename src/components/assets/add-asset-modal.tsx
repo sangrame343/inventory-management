@@ -42,6 +42,7 @@ interface AddAssetModalProps {
   vendors: Option[];
   employees: EmployeeOption[];
   currentUserId: string;
+  autoGenerateAssetCode?: boolean;
 }
 
 export function AddAssetModal({
@@ -51,6 +52,7 @@ export function AddAssetModal({
   vendors,
   employees,
   currentUserId,
+  autoGenerateAssetCode = false,
 }: AddAssetModalProps) {
   const [open, setOpen] = useState(false);
 
@@ -74,6 +76,7 @@ export function AddAssetModal({
   // Relations
   const [categoryId, setCategoryId] = useState("");
   const [departmentId, setDepartmentId] = useState("");
+  const [purchasedFromDepartmentId, setPurchasedFromDepartmentId] = useState("");
   const [locationId, setLocationId] = useState("");
   const [vendorId, setVendorId] = useState("");
 
@@ -130,6 +133,7 @@ export function AddAssetModal({
 
         categoryId,
         departmentId: departmentId || null,
+        purchasedFromDepartmentId: purchasedFromDepartmentId || null,
         locationId: locationId || null,
         vendorId: vendorId || null,
 
@@ -200,6 +204,7 @@ export function AddAssetModal({
 
       setCategoryId("");
       setDepartmentId("");
+      setPurchasedFromDepartmentId("");
       setLocationId("");
       setVendorId("");
 
@@ -407,6 +412,27 @@ export function AddAssetModal({
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="grid gap-2">
+                <Label>Purchased From Company</Label>
+                <Select value={purchasedFromDepartmentId} onValueChange={(val) => setPurchasedFromDepartmentId(val || "")}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select company (Department Registry)">
+                      {departments.find(d => d.id === purchasedFromDepartmentId)?.name}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {departments.map((dept) => (
+                      <SelectItem key={dept.id} value={dept.id}>
+                        {dept.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[10px] text-muted-foreground">Used for Asset Code/Tag generation (e.g. IBA, ABPL)</p>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-2">
                 <Label>Manager / Supervisor</Label>
                 <Select
                   value={managerUserId}
@@ -471,7 +497,7 @@ export function AddAssetModal({
                   id="assetCode"
                   value={assetCode}
                   onChange={(e) => setAssetCode(e.target.value)}
-                  placeholder="AST-CODE-001"
+                  placeholder="Auto-generated if empty"
                 />
               </div>
 
@@ -481,8 +507,7 @@ export function AddAssetModal({
                   id="assetTag"
                   value={assetTag}
                   onChange={(e) => setAssetTag(e.target.value)}
-                  placeholder="BARCODE / TAG ID"
-                  required
+                  placeholder="Auto-generated if empty"
                 />
               </div>
 
@@ -784,10 +809,11 @@ export function AddAssetModal({
               type="submit"
               disabled={
                 mutation.isPending ||
-                !assetTag ||
+                (!autoGenerateAssetCode && !assetTag) ||
                 !assetName ||
                 !categoryId ||
-                (handoverTargetType !== "NONE" && !termsAccepted)              }
+                (handoverTargetType !== "NONE" && !termsAccepted)
+              }
             >
               {mutation.isPending ? "Saving..." : "Save Asset"}
             </Button>

@@ -267,18 +267,26 @@ export function EmployeeList({ employees, departments, locations }: EmployeeList
         </Select>
 
         <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val || "all")}>
-          <SelectTrigger className="w-[140px]">
+          <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Status">
               {statusFilter === "all" ? "All Status" : 
                statusFilter === "ACTIVE" ? "Active" : 
-               statusFilter === "INACTIVE" ? "Inactive" : 
+               statusFilter === "INACTIVE" ? "Inactive / Not Active" : 
+               statusFilter === "ON_LEAVE" ? "On Leave" : 
+               statusFilter === "ON_HOLD" ? "On Hold" : 
+               statusFilter === "RESIGNED" ? "Resigned" : 
+               statusFilter === "LEFT" ? "Left" : 
                statusFilter === "TERMINATED" ? "Terminated" : statusFilter}
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Status</SelectItem>
             <SelectItem value="ACTIVE">Active</SelectItem>
-            <SelectItem value="INACTIVE">Inactive</SelectItem>
+            <SelectItem value="INACTIVE">Inactive / Not Active</SelectItem>
+            <SelectItem value="ON_LEAVE">On Leave</SelectItem>
+            <SelectItem value="ON_HOLD">On Hold</SelectItem>
+            <SelectItem value="RESIGNED">Resigned</SelectItem>
+            <SelectItem value="LEFT">Left</SelectItem>
             <SelectItem value="TERMINATED">Terminated</SelectItem>
           </SelectContent>
         </Select>
@@ -417,8 +425,21 @@ export function EmployeeList({ employees, departments, locations }: EmployeeList
                   </TableCell>
                   <TableCell className="text-sm">{employee.designation || "-"}</TableCell>
                   <TableCell>
-                    <Badge variant={employee.status === "ACTIVE" ? "default" : "secondary"} className="scale-90 origin-left">
-                      {employee.status}
+                    <Badge 
+                      variant={
+                        employee.status === "ACTIVE" ? "default" :
+                        employee.status === "TERMINATED" ? "destructive" :
+                        "secondary"
+                      }
+                      className="scale-90 origin-left"
+                    >
+                      {employee.status === "ACTIVE" ? "Active" :
+                       employee.status === "INACTIVE" ? "Inactive" :
+                       employee.status === "ON_LEAVE" ? "On Leave" :
+                       employee.status === "ON_HOLD" ? "On Hold" :
+                       employee.status === "RESIGNED" ? "Resigned" :
+                       employee.status === "LEFT" ? "Left" :
+                       employee.status === "TERMINATED" ? "Terminated" : employee.status}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-xs">{format(new Date(employee.joiningDate), "PP")}</TableCell>

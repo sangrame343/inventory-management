@@ -20,8 +20,12 @@ const baseMasterSchema = z.object({
 });
 
 // Domain Specifics
-export const departmentSchema = baseMasterSchema;
-export const assetCategorySchema = baseMasterSchema;
+export const departmentSchema = baseMasterSchema.extend({
+  code: z.string().optional().nullable(),
+});
+export const assetCategorySchema = baseMasterSchema.extend({
+  code: z.string().optional().nullable(),
+});
 
 export const vendorSchema = baseMasterSchema.extend({
   contactName: z.string().optional().nullable(),

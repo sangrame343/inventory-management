@@ -19,6 +19,7 @@ export function AssetImportButton() {
         "Asset Category": "Laptops",
         "Asset Code": "CH-LT-001",
         "Asset Department / Team": "Engineering",
+        "Purchased From Company": "IBA",
         "Location": "HQ Level 1",
         "Vendor": "Apple Inc",
         "Serial Number / Service Tag": "C02DF123A",
@@ -65,7 +66,7 @@ export function AssetImportButton() {
         open={open}
         onOpenChange={setOpen}
         title="Import Assets"
-        description="Upload an Excel file to bulk import assets. Make sure Category exists."
+        description="Upload an Excel file to bulk import assets. Categories and Departments must exist. Company Asset Tag ID and Asset Code are auto-generated if left empty."
         onImport={importAssets}
         onDownloadTemplate={handleDownloadTemplate}
       />

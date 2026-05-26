@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { EmployeeService } from "@/services/employee-service";
+import { SettingsService } from "@/services/settings-service";
 import { AddAssetModal } from "@/components/assets/add-asset-modal";
 import { AssetImportButton } from "@/components/assets/asset-import-button";
 import { AssetTableClient } from "@/components/assets/asset-table-client";
@@ -19,6 +20,7 @@ export default async function AssetsPage(props: {
     locationId?: string;
     vendorId?: string;
     employeeId?: string;
+    purchasedFromDepartmentId?: string;
     assignmentStatus?: string;
     quickFilter?: string;
   }>;
@@ -50,6 +52,7 @@ export default async function AssetsPage(props: {
     searchParams.status ? searchParams.status.split(",").filter(Boolean) : [];
   const vendorId = searchParams.vendorId || undefined;
   const employeeId = searchParams.employeeId || undefined;
+  const purchasedFromDepartmentId = searchParams.purchasedFromDepartmentId || undefined;
   const assignmentStatus =
     searchParams.assignmentStatus || searchParams.quickFilter || undefined;
 
@@ -85,10 +88,18 @@ export default async function AssetsPage(props: {
     andConditions.push({
       status: { in: statusFilter as any },
     });
+  } else {
+    andConditions.push({
+      status: { notIn: ["DISPOSED", "LOST"] },
+    });
   }
 
   if (vendorId) {
     andConditions.push({ vendorId });
+  }
+
+  if (purchasedFromDepartmentId) {
+    andConditions.push({ purchasedFromDepartmentId });
   }
 
   if (employeeId) {
@@ -155,9 +166,11 @@ export default async function AssetsPage(props: {
     orderBy = { location: { name: order } };
   } else if (sortBy === "vendor") {
     orderBy = { vendor: { name: order } };
+  } else if (sortBy === "purchasedFromDepartment") {
+    orderBy = { purchasedFromDepartment: { name: order } };
   }
 
-  const [totalCount, categories, departments, locations, vendors, employees] =
+  const [totalCount, categories, departments, locations, vendors, employees, settings] =
     await Promise.all([
       db.asset.count({ where }),
 
@@ -182,6 +195,8 @@ export default async function AssetsPage(props: {
       }),
 
       EmployeeService.getEmployees(companyId),
+
+      SettingsService.getSettings(companyId),
     ]);
 
   let assets: any[] = [];
@@ -242,6 +257,7 @@ export default async function AssetsPage(props: {
       include: {
         category: true,
         department: true,
+        purchasedFromDepartment: true,
         location: true,
         vendor: true,
         assignments: {
@@ -261,6 +277,7 @@ export default async function AssetsPage(props: {
       include: {
         category: true,
         department: true,
+        purchasedFromDepartment: true,
         location: true,
         vendor: true,
         assignments: {
@@ -302,6 +319,7 @@ export default async function AssetsPage(props: {
               userId: x.user?.id || null,
             }))}
             currentUserId={session.user.id}
+            autoGenerateAssetCode={settings?.autoGenerateAssetCode ?? false}
           />
         </div>
       </div>
@@ -313,6 +331,7 @@ export default async function AssetsPage(props: {
         locations={locations.map((l) => ({ id: l.id, name: l.name }))}
         vendors={vendors.map((v) => ({ id: v.id, name: v.name }))}
         employees={employees.map((e) => ({ id: e.id, name: e.fullName }))}
+        departments={departments.map((d) => ({ id: d.id, name: d.name }))}
       />
     </div>
   );

@@ -6,6 +6,10 @@ import {
   getInventoryUnits,
 } from "@/app/actions/inventory-master-actions";
 import { InventoryDashboard } from "@/components/inventory/inventory-dashboard";
+import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { EmployeeService } from "@/services/employee-service";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
   title: "Inventory | Dashboard",
@@ -13,11 +17,18 @@ export const metadata: Metadata = {
 };
 
 export default async function InventoryPage() {
-  const [items, categories, locations, units] = await Promise.all([
+  const session = await auth();
+  if (!session?.user?.activeCompanyId) redirect("/login");
+  const companyId = session.user.activeCompanyId;
+
+  const [items, categories, locations, units, employees, assetCategories, departments] = await Promise.all([
     getInventoryItems(),
     getInventoryCategories(),
     getInventoryLocations(),
     getInventoryUnits(),
+    EmployeeService.getEmployees(companyId),
+    db.assetCategory.findMany({ where: { companyId }, orderBy: { name: "asc" } }),
+    db.department.findMany({ where: { companyId }, orderBy: { name: "asc" } }),
   ]);
 
   return (
@@ -31,6 +42,9 @@ export default async function InventoryPage() {
         categories={categories}
         locations={locations}
         units={units}
+        employees={employees.map(e => ({ id: e.id, name: e.fullName }))}
+        assetCategories={assetCategories.map(c => ({ id: c.id, name: c.name }))}
+        departments={departments.map(d => ({ id: d.id, name: d.name }))}
       />
     </div>
   );

@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { AssignmentService } from "@/services/assignment-service";
 import { z } from "zod";
-import { HandoverType, PhysicalCondition, FunctionalStatus } from "@prisma/client";
+import { HandoverType, PhysicalCondition, FunctionalStatus, Role } from "@prisma/client";
+import { checkPermission } from "@/lib/permissions";
+import { ApprovalService } from "@/lib/services/approval-service";
+
 
 const assignSchema = z.object({
   assetId: z.string().min(1, "Asset ID is required"),
@@ -24,17 +27,48 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const companyId = session.user.activeCompanyId;
+    const userId = session.user.id;
+    const role = session.user.role as Role;
+
+    const permission = checkPermission(role, "ASSET", "ASSIGN");
+    if (permission === "DENY") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
+
     const body = await req.json();
     const validated = assignSchema.parse(body);
 
+    if (permission === "REQUIRE_APPROVAL") {
+      await ApprovalService.createRequest({
+        companyId,
+        requestedById: userId,
+        module: "ASSET",
+        action: "ASSIGN",
+        title: `Assign Asset: ${validated.assetId}`,
+        summary: `Request to assign asset ${validated.assetId}`,
+        targetRecordId: validated.assetId,
+        payload: {
+          ...validated,
+          assignedById: userId,
+        },
+      });
+      return NextResponse.json(
+        { message: "Assignment request submitted for approval", pending: true },
+        { status: 202 }
+      );
+    }
+
     const assignment = await AssignmentService.assignAsset(
       validated.assetId,
-      session.user.activeCompanyId,
+      companyId,
       {
         ...validated,
-        assignedById: session.user.id,
+        assignedById: userId,
       }
     );
+
 
     return NextResponse.json(assignment, { status: 201 });
   } catch (error: any) {

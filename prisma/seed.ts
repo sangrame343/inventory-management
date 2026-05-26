@@ -1,3 +1,4 @@
+import "dotenv/config";
 import {
   PrismaClient,
   Role,
@@ -22,7 +23,9 @@ async function main() {
   const passwordHash = await bcrypt.hash("password123", 10);
 
   // Clean up in dependency-safe order
+  await prisma.approvalRequest.deleteMany();
   await prisma.activityLog.deleteMany();
+
   await prisma.maintenanceSchedule.deleteMany();
   await prisma.maintenanceTicket.deleteMany();
   await prisma.inventoryTransaction.deleteMany();
@@ -49,8 +52,8 @@ async function main() {
   // Companies
   const companyA = await prisma.company.create({
     data: {
-      name: "Acme Corp",
-      code: "ACME",
+      name: "ABPL",
+      code: "ABPl",
       logoUrl:
         "https://ui-avatars.com/api/?name=Acme+Corp&background=0D8ABC&color=fff",
     },
@@ -58,8 +61,8 @@ async function main() {
 
   const companyB = await prisma.company.create({
     data: {
-      name: "Globex Inc",
-      code: "GBX",
+      name: "IBA",
+      code: "IBA",
       logoUrl:
         "https://ui-avatars.com/api/?name=Globex+Inc&background=F39C12&color=fff",
     },
@@ -69,7 +72,7 @@ async function main() {
   await prisma.companySettings.create({
     data: {
       companyId: companyA.id,
-      assetCodePrefix: "ACME",
+      assetCodePrefix: "ABPL",
       currency: "INR",
       dateFormat: "DD-MM-YYYY",
       maintenanceReminderDays: 7,
@@ -82,7 +85,7 @@ async function main() {
   await prisma.companySettings.create({
     data: {
       companyId: companyB.id,
-      assetCodePrefix: "GBX",
+      assetCodePrefix: "IBA",
       currency: "INR",
       dateFormat: "DD-MM-YYYY",
       maintenanceReminderDays: 10,
@@ -123,12 +126,12 @@ async function main() {
   const adminA = await prisma.user.create({
     data: {
       email: "admin@acmecorp.local",
-      name: "Acme Admin",
+      name: "ABPL Admin",
       passwordHash,
       activeCompanyId: companyA.id,
       status: "ACTIVE",
       companyRoles: {
-        create: [{ companyId: companyA.id, role: Role.COMPANY_ADMIN }],
+        create: [{ companyId: companyA.id, role: Role.ADMIN }],
       },
     },
   });
@@ -138,7 +141,7 @@ async function main() {
       companyId: companyA.id,
       userId: adminA.id,
       employeeCode: "ACME-ADM-001",
-      fullName: "Acme Admin",
+      fullName: "ABPL Admin",
       joiningDate: new Date(),
     }
   });
@@ -146,12 +149,12 @@ async function main() {
   const assetManagerA = await prisma.user.create({
     data: {
       email: "assets@acmecorp.local",
-      name: "Alice Asset Manager",
+      name: " Asset Manager",
       passwordHash,
       activeCompanyId: companyA.id,
       status: "ACTIVE",
       companyRoles: {
-        create: [{ companyId: companyA.id, role: Role.ASSET_MANAGER }],
+        create: [{ companyId: companyA.id, role: Role.ADMIN }],
       },
     },
   });
@@ -160,8 +163,8 @@ async function main() {
     data: {
       companyId: companyA.id,
       userId: assetManagerA.id,
-      employeeCode: "ACME-AST-001",
-      fullName: "Alice Asset Manager",
+      employeeCode: "ABPL-AST-001",
+      fullName: " Asset Manager",
       joiningDate: new Date(),
     }
   });
@@ -174,7 +177,7 @@ async function main() {
       activeCompanyId: companyA.id,
       status: "ACTIVE",
       companyRoles: {
-        create: [{ companyId: companyA.id, role: Role.EMPLOYEE }],
+        create: [{ companyId: companyA.id, role: Role.USER }],
       },
     },
   });
@@ -183,7 +186,7 @@ async function main() {
     data: {
       companyId: companyA.id,
       userId: employeeA.id,
-      employeeCode: "ACME-EMP-001",
+      employeeCode: "ABPL-EMP-001",
       fullName: "John Doe",
       joiningDate: new Date(),
     }
@@ -197,7 +200,7 @@ async function main() {
       activeCompanyId: companyA.id,
       status: "ACTIVE",
       companyRoles: {
-        create: [{ companyId: companyA.id, role: Role.EMPLOYEE }],
+        create: [{ companyId: companyA.id, role: Role.USER }],
       },
     },
   });
@@ -206,7 +209,7 @@ async function main() {
     data: {
       companyId: companyA.id,
       userId: employeeB.id,
-      employeeCode: "ACME-EMP-002",
+      employeeCode: "ABPL-EMP-002",
       fullName: "Jane Smith",
       joiningDate: new Date(),
     }
@@ -215,12 +218,12 @@ async function main() {
   const adminB = await prisma.user.create({
     data: {
       email: "admin@globex.local",
-      name: "Globex Admin",
+      name: "ABPL Admin",
       passwordHash,
       activeCompanyId: companyB.id,
       status: "ACTIVE",
       companyRoles: {
-        create: [{ companyId: companyB.id, role: Role.COMPANY_ADMIN }],
+        create: [{ companyId: companyB.id, role: Role.ADMIN }],
       },
     },
   });
@@ -229,7 +232,7 @@ async function main() {
     data: {
       companyId: companyB.id,
       userId: adminB.id,
-      employeeCode: "GBX-ADM-001",
+      employeeCode: "ABPL-ADM-001",
       fullName: "Globex Admin",
       joiningDate: new Date(),
     }
@@ -240,6 +243,7 @@ async function main() {
     data: { 
       name: "IT Department", 
       companyId: companyA.id,
+      code: "IT",
       description: "Information Technology and Infrastructure",
       isActive: true,
     },
@@ -249,6 +253,7 @@ async function main() {
     data: { 
       name: "Human Resources", 
       companyId: companyA.id,
+      code: "HR",
       description: "Recruitment and Employee Management",
       isActive: true,
     },
@@ -328,6 +333,7 @@ async function main() {
     data: { 
       name: "Laptops", 
       companyId: companyA.id,
+      code: "HW-LAP",
       description: "Portable computing devices",
       isActive: true,
     },
@@ -337,6 +343,7 @@ async function main() {
     data: { 
       name: "Monitors", 
       companyId: companyA.id,
+      code: "HW-MON",
       description: "Display units",
       isActive: true,
     },
@@ -346,6 +353,7 @@ async function main() {
     data: { 
       name: "Mobiles", 
       companyId: companyA.id,
+      code: "HW-MOB",
       isActive: true,
     },
   });

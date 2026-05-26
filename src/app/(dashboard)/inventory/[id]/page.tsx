@@ -11,10 +11,24 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { InventoryItemActions } from "@/components/inventory/inventory-item-actions";
+import { auth } from "@/lib/auth";
+import { EmployeeService } from "@/services/employee-service";
+import { redirect } from "next/navigation";
 
 export default async function InventoryItemPage(props: { params: Promise<{ id: string }> }) {
   const { id } = await props.params;
-  const item = await getInventoryItemById(id);
+  const session = await auth();
+  if (!session?.user?.activeCompanyId) redirect("/login");
+  const companyId = session.user.activeCompanyId;
+
+  const [item, locations, employees, assetCategories, departments] = await Promise.all([
+    getInventoryItemById(id),
+    db.inventoryLocation.findMany({ where: { companyId }, orderBy: { name: "asc" } }),
+    EmployeeService.getEmployees(companyId),
+    db.assetCategory.findMany({ where: { companyId }, orderBy: { name: "asc" } }),
+    db.department.findMany({ where: { companyId }, orderBy: { name: "asc" } }),
+  ]);
 
   if (!item) {
     notFound();
@@ -38,6 +52,14 @@ export default async function InventoryItemPage(props: { params: Promise<{ id: s
           {item.status}
         </Badge>
       </div>
+
+      <InventoryItemActions 
+        item={item}
+        locations={locations}
+        employees={employees.map(e => ({ id: e.id, name: e.fullName }))}
+        categories={assetCategories.map(c => ({ id: c.id, name: c.name }))}
+        departments={departments.map(d => ({ id: d.id, name: d.name }))}
+      />
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>

@@ -178,7 +178,7 @@ export async function getDashboardCharts(companyId: string) {
   };
 }
 
-export async function getRecentActivity(companyId: string, limit = 10) {
+export async function getRecentActivity(companyId: string, limit = 50) {
   return db.activityLog.findMany({
     where: { companyId },
     orderBy: { createdAt: "desc" },

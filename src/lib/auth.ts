@@ -6,6 +6,7 @@ import bcrypt from "bcryptjs";
 import { db } from "./db";
 import { authConfig } from "@/auth.config";
 
+console.log("Initializing NextAuth...");
 export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
   ...authConfig, // ✅ Edge-safe base config
 
@@ -78,12 +79,12 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
           const activeRole = companyRoles.find(
             (cr: any) => cr.companyId === token.activeCompanyId
           )?.role;
-          token.role = activeRole || "EMPLOYEE";
+          token.role = activeRole || "USER";
         } else {
           token.role =
             companyRoles.length > 0
               ? companyRoles[0].role
-              : "EMPLOYEE";
+              : "USER";
         }
       }
 
@@ -111,3 +112,4 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
     },
   },
 });
+console.log("NextAuth initialized, handlers:", !!handlers);

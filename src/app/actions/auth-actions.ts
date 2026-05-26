@@ -17,14 +17,11 @@ export async function registerUser(formData: FormData) {
     return { error: "Missing required fields" };
   }
 
-  if (role === Role.SUPER_ADMIN) {
-     return { error: "Cannot register as SUPER_ADMIN" };
-  }
-
   // Basic validate
-  if (role !== Role.COMPANY_ADMIN && role !== Role.ASSET_MANAGER && role !== Role.INVENTORY_MANAGER && role !== Role.MAINTENANCE_MANAGER && role !== Role.TECHNICIAN && role !== Role.EMPLOYEE && role !== Role.AUDITOR && role !== Role.FINANCE_VIEWER) {
+  if (role !== Role.SUPER_ADMIN && role !== Role.ADMIN && role !== Role.USER) {
     return { error: "Invalid role selected" };
   }
+
 
   // Check existing user
   const existingUser = await db.user.findUnique({

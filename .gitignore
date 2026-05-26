@@ -44,3 +44,9 @@ prisma/dev.db
 
 # generated prisma client if generated manually
 /src/generated/prisma
+
+# database backups
+*.sql
+
+# scratch tools
+/scratch/

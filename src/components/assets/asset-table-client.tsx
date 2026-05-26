@@ -8,6 +8,7 @@ import {
   Pencil,
   History,
   Trash2,
+  Copy,
   MoreHorizontal,
   ChevronDown,
   ArrowUp,
@@ -31,7 +32,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { deleteAsset } from "@/app/actions/asset-actions";
+import { deleteAsset, duplicateAsset } from "@/app/actions/asset-actions";
 import { toast } from "sonner";
 import { AssetTableToolbar } from "./asset-table-toolbar";
 import {
@@ -55,6 +56,7 @@ interface Asset {
   location: { name: string } | null;
   category: { name: string } | null;
   vendor: { name: string } | null;
+  purchasedFromDepartment: { name: string } | null;
   purchaseDate: Date | null;
   assignments: any[];
 }
@@ -66,6 +68,7 @@ interface AssetTableClientProps {
   locations: { id: string; name: string }[];
   vendors: { id: string; name: string }[];
   employees: { id: string; name: string }[];
+  departments: { id: string; name: string }[];
 }
 
 export function AssetTableClient({
@@ -75,6 +78,7 @@ export function AssetTableClient({
   locations,
   vendors,
   employees,
+  departments,
 }: AssetTableClientProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isPending, startTransition] = useTransition();
@@ -155,6 +159,20 @@ export function AssetTableClient({
     });
   };
 
+  const handleDuplicate = async (id: string, name: string) => {
+    startTransition(async () => {
+      try {
+        const res = await duplicateAsset(id);
+        toast.success(`Asset "${name}" duplicated`);
+        router.push(`/assets/${res.id}`);
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to duplicate asset"
+        );
+      }
+    });
+  };
+
   const rangeStart = (currentPage - 1) * currentLimit + 1;
   const rangeEnd = Math.min(currentPage * currentLimit, totalCount);
 
@@ -167,6 +185,7 @@ export function AssetTableClient({
         locations={locations}
         vendors={vendors}
         employees={employees}
+        departments={departments}
       />
 
       <div className="rounded-md border bg-card overflow-hidden">
@@ -245,6 +264,15 @@ export function AssetTableClient({
                 >
                   <div className="flex items-center">
                     Vendor <SortIcon field="vendor" />
+                  </div>
+                </TableHead>
+
+                <TableHead
+                  className="cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => handleSort("purchasedFromDepartment")}
+                >
+                  <div className="flex items-center whitespace-nowrap">
+                    Purchased From <SortIcon field="purchasedFromDepartment" />
                   </div>
                 </TableHead>
 
@@ -416,6 +444,8 @@ export function AssetTableClient({
 
                       <TableCell>{asset.vendor?.name || "N/A"}</TableCell>
 
+                      <TableCell>{asset.purchasedFromDepartment?.name || "—"}</TableCell>
+
                       <TableCell>
                         {asset.purchaseDate ?
                           format(new Date(asset.purchaseDate), "PPP")
@@ -471,8 +501,14 @@ export function AssetTableClient({
                                 }
                               />
                               <DropdownMenuItem
+                                onClick={() => handleDuplicate(asset.id, asset.name)}
+                              >
+                                <Copy className="mr-2 h-4 w-4" />
+                                <span>Duplicate</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
                                 className="text-destructive focus:text-destructive"
-                                onSelect={() =>
+                                onClick={() =>
                                   handleDelete(asset.id, asset.name)
                                 }
                               >

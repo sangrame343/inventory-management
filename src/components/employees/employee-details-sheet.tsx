@@ -108,8 +108,20 @@ export function EmployeeDetailsSheet({
                 <>
                   <div className="flex items-center gap-2">
                     <span className="text-xl font-bold">{data.fullName}</span>
-                    <Badge variant={data.status === "ACTIVE" ? "default" : "secondary"}>
-                      {data.status}
+                    <Badge 
+                      variant={
+                        data.status === "ACTIVE" ? "default" :
+                        data.status === "TERMINATED" ? "destructive" :
+                        "secondary"
+                      }
+                    >
+                      {data.status === "ACTIVE" ? "Active" :
+                       data.status === "INACTIVE" ? "Inactive" :
+                       data.status === "ON_LEAVE" ? "On Leave" :
+                       data.status === "ON_HOLD" ? "On Hold" :
+                       data.status === "RESIGNED" ? "Resigned" :
+                       data.status === "LEFT" ? "Left" :
+                       data.status === "TERMINATED" ? "Terminated" : data.status}
                     </Badge>
                   </div>
                   <span className="text-sm font-mono text-muted-foreground">

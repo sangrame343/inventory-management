@@ -36,6 +36,7 @@ interface AssetTableToolbarProps {
   locations: { id: string; name: string }[];
   vendors: { id: string; name: string }[];
   employees: { id: string; name: string }[];
+  departments: { id: string; name: string }[];
 }
 
 type FilterChip = {
@@ -60,6 +61,7 @@ export function AssetTableToolbar({
   locations,
   vendors,
   employees,
+  departments,
 }: AssetTableToolbarProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -77,6 +79,7 @@ export function AssetTableToolbar({
     searchParams.get("locationId")?.split(",").filter(Boolean) || [];
   const activeVendor = searchParams.get("vendorId");
   const activeEmployee = searchParams.get("employeeId");
+  const activePurchasedFromDepartment = searchParams.get("purchasedFromDepartmentId");
   const activeAssignment = searchParams.get("assignmentStatus");
   const activeQuickFilter = searchParams.get("quickFilter");
   const activeSortBy = searchParams.get("sortBy") || "createdAt";
@@ -179,8 +182,12 @@ export function AssetTableToolbar({
     { label: "Latest Assigned", value: "assignedAt", order: "desc" },
     { label: "Name (A-Z)", value: "name", order: "asc" },
     { label: "Name (Z-A)", value: "name", order: "desc" },
+    { label: "Status (Active First)", value: "status", order: "asc" },
+    { label: "Status (Disposed First)", value: "status", order: "desc" },
     { label: "Purchase Date (Newest)", value: "purchaseDate", order: "desc" },
     { label: "Purchase Date (Oldest)", value: "purchaseDate", order: "asc" },
+    { label: "Purchased From (A-Z)", value: "purchasedFromDepartment", order: "asc" },
+    { label: "Purchased From (Z-A)", value: "purchasedFromDepartment", order: "desc" },
   ];
 
   const quickFilters = [
@@ -258,6 +265,17 @@ export function AssetTableToolbar({
       chips.push({
         label: `Vendor: ${label}`,
         key: "vendorId",
+        value: null,
+        type: "single",
+      });
+    }
+
+    if (activePurchasedFromDepartment) {
+      const label =
+        departments.find((o) => o.id === activePurchasedFromDepartment)?.name || activePurchasedFromDepartment;
+      chips.push({
+        label: `Purchased From: ${label}`,
+        key: "purchasedFromDepartmentId",
         value: null,
         type: "single",
       });
@@ -498,6 +516,40 @@ export function AssetTableToolbar({
               >
                 {opt.name}
                 {activeVendor === opt.id && <Check className="h-4 w-4" />}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            className={cn(
+              buttonVariants({ variant: "outline", size: "sm" }),
+              "h-8 border-dashed",
+            )}
+          >
+            <Filter className="mr-2 h-4 w-4" />
+            Purchased From
+            {activePurchasedFromDepartment && <Check className="ml-2 h-3 w-3 text-primary" />}
+          </DropdownMenuTrigger>
+
+          <DropdownMenuContent
+            align="start"
+            className="w-[200px] max-h-[300px] overflow-y-auto"
+          >
+            <MenuLabel>Filter by Purchased From</MenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => updateFilters({ purchasedFromDepartmentId: null })}>
+              All Companies
+            </DropdownMenuItem>
+            {departments.map((opt) => (
+              <DropdownMenuItem
+                key={opt.id}
+                className="flex items-center justify-between"
+                onClick={() => updateFilters({ purchasedFromDepartmentId: opt.id })}
+              >
+                {opt.name}
+                {activePurchasedFromDepartment === opt.id && <Check className="h-4 w-4" />}
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>

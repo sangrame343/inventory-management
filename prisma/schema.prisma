@@ -45,15 +45,40 @@ model VerificationToken {
 
 enum Role {
   SUPER_ADMIN
-  COMPANY_ADMIN
-  ASSET_MANAGER
-  INVENTORY_MANAGER
-  MAINTENANCE_MANAGER
-  TECHNICIAN
-  EMPLOYEE
-  AUDITOR
-  FINANCE_VIEWER
+  ADMIN
+  USER
 }
+
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum ApprovalModule {
+  ASSET
+  INVENTORY
+  EMPLOYEE
+  MAINTENANCE
+  TRANSFER
+  SETTINGS
+  USER
+}
+
+enum ApprovalAction {
+  CREATE
+  UPDATE
+  DELETE
+  ASSIGN
+  TRANSFER
+  IMPORT
+  BULK_DELETE
+  ISSUE
+  REGISTER_AS_ASSET
+}
+
 
 enum UserStatus {
   PENDING
@@ -203,7 +228,11 @@ model User {
   transfersApproved  AssetTransfer[] @relation("transferApprovedBy")
   transfersCompleted AssetTransfer[] @relation("transferCompletedBy")
   transfersUpdated   AssetTransfer[] @relation("transferUpdatedBy")
+
+  requestedApprovals ApprovalRequest[] @relation("requestedBy")
+  reviewedApprovals  ApprovalRequest[] @relation("reviewedBy")
 }
+
 
 model Company {
   id                   String   @id @default(cuid())
@@ -213,6 +242,7 @@ model Company {
   updatedAt            DateTime @updatedAt
   code                 String?  @unique
   lastTransferSequence Int      @default(0)
+  lastAssetSequence    Int      @default(0)
 
   users              CompanyUser[]
   departments        Department[]
@@ -234,13 +264,14 @@ model Company {
   inventoryAdjustments  InventoryAdjustment[]
   maintenanceSchedules  MaintenanceSchedule[]
   employees             Employee[]
+  approvalRequests      ApprovalRequest[]
 }
 
 model CompanyUser {
   id        String @id @default(cuid())
   companyId String
   userId    String
-  role      Role   @default(EMPLOYEE)
+  role      Role   @default(USER)
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -271,17 +302,20 @@ model Department {
   id          String   @id @default(cuid())
   companyId   String
   name        String
+  code        String?
   description String?
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  company     Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  assets      Asset[]
-  employees   Employee[]
-  assignments AssetAssignment[]
+  company         Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  assets          Asset[]
+  purchasedAssets Asset[]           @relation("purchasedFrom")
+  employees       Employee[]
+  assignments     AssetAssignment[]
 
   @@unique([companyId, name])
+  @@unique([companyId, code])
   @@index([companyId])
 }
 
@@ -323,6 +357,7 @@ model AssetCategory {
   id          String   @id @default(cuid())
   companyId   String
   name        String
+  code        String?
   description String?
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
@@ -332,6 +367,7 @@ model AssetCategory {
   assets  Asset[]
 
   @@unique([companyId, name])
+  @@unique([companyId, code])
   @@index([companyId])
 }
 
@@ -342,6 +378,7 @@ model Asset {
   departmentId String?
   locationId   String?
   vendorId     String?
+  purchasedFromDepartmentId String?
 
   name         String
   assetCode    String?
@@ -372,6 +409,7 @@ model Asset {
   company    Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
   category   AssetCategory @relation(fields: [categoryId], references: [id])
   department Department?   @relation(fields: [departmentId], references: [id])
+  purchasedFromDepartment Department? @relation("purchasedFrom", fields: [purchasedFromDepartmentId], references: [id])
   location   Location?     @relation(fields: [locationId], references: [id])
   vendor     Vendor?       @relation(fields: [vendorId], references: [id])
 
@@ -611,12 +649,47 @@ model ActivityLog {
   details   String?  @db.Text
   createdAt DateTime @default(now())
 
+  // Approval context
+  requestedById  String?
+  reviewedById   String?
+  approvalModule String?
+  approvalAction String?
+  approvalStatus String?
+
+
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
   user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([companyId])
   @@index([entity, entityId])
 }
+
+model ApprovalRequest {
+  id              String         @id @default(cuid())
+  companyId       String
+  requestedById   String
+  reviewedById    String?
+  module          ApprovalModule
+  action          ApprovalAction
+  status          ApprovalStatus @default(PENDING)
+  title           String
+  summary         String?
+  targetRecordId  String?
+  oldData         Json?
+  payload         Json
+  reviewNote      String?
+  reviewedAt      DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  company     Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  requestedBy User    @relation("requestedBy", fields: [requestedById], references: [id])
+  reviewedBy  User?   @relation("reviewedBy", fields: [reviewedById], references: [id])
+
+  @@index([companyId])
+  @@index([status])
+}
+
 
 // ======================================================================
 // NEW INVENTORY MODULE ARCHITECTURE

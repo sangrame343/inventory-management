@@ -5,9 +5,14 @@ import {
   HandoverType,
   PhysicalCondition,
   FunctionalStatus,
+  Role,
 } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { generateAssetCode, generateAssetTag } from "@/lib/asset-utils";
+import { checkPermission } from "@/lib/permissions";
+import { ApprovalService } from "@/lib/services/approval-service";
+
 
 export async function POST(req: Request) {
   try {
@@ -20,6 +25,12 @@ export async function POST(req: Request) {
     const companyId = session.user.activeCompanyId;
     const currentUserId = session.user.id;
     const body = await req.json();
+    const role = session.user.role as Role;
+
+    const permission = checkPermission(role, "ASSET", "CREATE");
+    if (permission === "DENY") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
 
     const {
       assetCode,
@@ -40,6 +51,7 @@ export async function POST(req: Request) {
       condition,
       categoryId,
       departmentId,
+      purchasedFromDepartmentId,
       locationId,
       vendorId,
       warranty,
@@ -47,12 +59,29 @@ export async function POST(req: Request) {
       handover,
     } = body ?? {};
 
-    if (!assetTag || !name || !categoryId) {
+    if (!name || !categoryId) {
       return NextResponse.json(
-        { error: "Asset tag, name, and category are required" },
+        { error: "Asset name and category are required" },
         { status: 400 }
       );
     }
+
+    if (permission === "REQUIRE_APPROVAL") {
+      await ApprovalService.createRequest({
+        companyId,
+        requestedById: currentUserId,
+        module: "ASSET",
+        action: "CREATE",
+        title: `Create Asset: ${name}`,
+        summary: `Request to create new asset ${name}`,
+        payload: body,
+      });
+      return NextResponse.json(
+        { message: "Request submitted for approval", pending: true },
+        { status: 202 }
+      );
+    }
+
 
     const normalizedAccessories =
       Array.isArray(accessoriesIncluded)
@@ -72,6 +101,50 @@ export async function POST(req: Request) {
         : AssetStatus.ACTIVE;
 
     const result = await db.$transaction(async (tx) => {
+      // 1. Check settings and generate codes if needed
+      const settings = await tx.companySettings.findUnique({
+        where: { companyId },
+      });
+
+      let finalAssetCode = assetCode?.trim() || null;
+      let finalAssetTag = assetTag?.trim() || null;
+
+      if (settings?.autoGenerateAssetCode && (!finalAssetCode || !finalAssetTag)) {
+        // Increment sequence
+        const company = await tx.company.update({
+          where: { id: companyId },
+          data: { lastAssetSequence: { increment: 1 } },
+          select: { code: true, name: true, lastAssetSequence: true },
+        });
+
+        // Get info for generation
+        const [dept, cat] = await Promise.all([
+          purchasedFromDepartmentId
+            ? tx.department.findUnique({ where: { id: purchasedFromDepartmentId } })
+            : null,
+          tx.assetCategory.findUnique({ where: { id: categoryId } }),
+        ]);
+
+        if (!cat) throw new Error("Category not found");
+
+        const genCtx = {
+          companyCode: company.code,
+          companyName: company.name,
+          purchasedFromCode: dept?.code,
+          purchasedFromName: dept?.name,
+          categoryCode: cat.code,
+          categoryName: cat.name,
+          sequence: company.lastAssetSequence,
+        };
+
+        if (!finalAssetCode) finalAssetCode = generateAssetCode(genCtx);
+        if (!finalAssetTag) finalAssetTag = generateAssetTag(genCtx);
+      }
+
+      if (!finalAssetTag) {
+        throw new Error("Asset tag is required");
+      }
+
       const asset = await tx.asset.create({
         data: {
           company: {
@@ -105,8 +178,16 @@ export async function POST(req: Request) {
               }
             : {}),
 
-          assetCode: assetCode?.trim() || null,
-          assetTag: String(assetTag).trim(),
+          ...(purchasedFromDepartmentId
+            ? {
+                purchasedFromDepartment: {
+                  connect: { id: purchasedFromDepartmentId },
+                },
+              }
+            : {}),
+
+          assetCode: finalAssetCode,
+          assetTag: finalAssetTag,
           name: String(name).trim(),
           brand: brand?.trim() || null,
           model: model?.trim() || null,
