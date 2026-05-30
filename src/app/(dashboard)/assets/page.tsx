@@ -327,7 +327,7 @@ export default async function AssetsPage(props: {
       </div>
 
       <AssetTableClient
-        assets={assets as any}
+        assets={JSON.parse(JSON.stringify(assets))}
         totalCount={totalCount}
         categories={categories.map((c) => ({ id: c.id, name: c.name }))}
         locations={locations.map((l) => ({ id: l.id, name: l.name }))}
