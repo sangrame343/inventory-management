@@ -5,6 +5,7 @@ import { EmployeeService } from "@/services/employee-service";
 import { SettingsService } from "@/services/settings-service";
 import { AddAssetModal } from "@/components/assets/add-asset-modal";
 import { AssetImportButton } from "@/components/assets/asset-import-button";
+import { AssetExportButton } from "@/components/assets/asset-export-button";
 import { AssetTableClient } from "@/components/assets/asset-table-client";
 import type { Prisma } from "@prisma/client";
 
@@ -307,6 +308,7 @@ export default async function AssetsPage(props: {
 
         <div className="flex items-center gap-2">
           <AssetImportButton />
+          <AssetExportButton />
           <AddAssetModal
             categories={categories.map((x) => ({ id: x.id, name: x.name }))}
             departments={departments.map((x) => ({ id: x.id, name: x.name }))}

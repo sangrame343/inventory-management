@@ -394,6 +394,8 @@ model Asset {
   accessoriesIncluded       String[] @default([])
   estimatedReplacementValue Float?
   attachmentUrl             String?
+  imageUrl                  String?
+  purchaseUrl               String?
 
   purchaseDate  DateTime?
   cost          Float?

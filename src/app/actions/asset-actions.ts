@@ -178,12 +178,18 @@ export async function updateAsset(id: string, data: any) {
     serialNumber: data.serialNumber?.trim() || null,
     specifications: data.specifications?.trim() || null,
     accessoriesIncluded: normalizedAccessories || [],
+    cost:
+      data.cost === "" || data.cost === null || data.cost === undefined
+        ? null
+        : Number(data.cost),
     estimatedReplacementValue:
       data.estimatedReplacementValue === "" || data.estimatedReplacementValue === null
         ? null
         : Number(data.estimatedReplacementValue),
     attachmentUrl: data.attachmentUrl?.trim() || null,
-    purchaseDate: data.purchaseDate ? new Date(data.purchaseDate) : null,
+    imageUrl: data.imageUrl?.trim() || null,
+    purchaseUrl: data.purchaseUrl?.trim() || null,
+    purchaseDate: (data.purchaseDate && !isNaN(Date.parse(data.purchaseDate))) ? new Date(data.purchaseDate) : null,
     condition: data.condition?.trim() || null,
     categoryId: data.categoryId,
     departmentId: data.departmentId || null,
@@ -191,7 +197,8 @@ export async function updateAsset(id: string, data: any) {
     locationId: data.locationId || null,
     vendorId: data.vendorId || null,
     warranty: data.warranty?.trim() || null,
-    warrantyExpiration: data.warrantyExpiration ? new Date(data.warrantyExpiration) : null,
+    warrantyExpiration: (data.warrantyExpiration && !isNaN(Date.parse(data.warrantyExpiration))) ? new Date(data.warrantyExpiration) : null,
+    status: data.status,
   };
 
   if (permission === "REQUIRE_APPROVAL") {
@@ -237,7 +244,7 @@ export async function updateAsset(id: string, data: any) {
   revalidatePath("/assets");
   revalidatePath(`/assets/${id}`);
   revalidatePath(`/assets/${id}/edit`);
-  return res;
+  return JSON.parse(JSON.stringify(res));
 }
 
 
@@ -354,6 +361,61 @@ export async function duplicateAsset(id: string) {
   });
 
   revalidatePath("/assets");
-  return res;
+  return JSON.parse(JSON.stringify(res));
 }
+
+export async function getExportAssetsData() {
+  const { companyId } = await getSessionContext();
+
+  const assets = await db.asset.findMany({
+    where: { companyId },
+    include: {
+      category: true,
+      department: true,
+      purchasedFromDepartment: true,
+      location: true,
+      vendor: true,
+      assignments: {
+        where: { returnedAt: null },
+        include: { employee: true, user: true },
+        orderBy: { assignedAt: "desc" },
+        take: 1,
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return assets.map((asset) => {
+    const assignment = asset.assignments[0];
+    const assignedTo = assignment
+      ? (assignment.employee?.fullName || assignment.user?.name || assignment.user?.email || "N/A")
+      : "Unassigned";
+
+    return {
+      "Asset Code": asset.assetCode || "—",
+      "Asset Tag ID": asset.assetTag,
+      "Name / Model": asset.name,
+      "Category": asset.category?.name || "N/A",
+      "Status": asset.status,
+      "Condition": asset.condition || "N/A",
+      "Brand": asset.brand || "—",
+      "Model": asset.model || "—",
+      "Serial Number": asset.serialNumber || "—",
+      "Specifications": asset.specifications || "—",
+      "Accessories": asset.accessoriesIncluded.join(", ") || "—",
+      "Department": asset.department?.name || "N/A",
+      "Purchased From Company": asset.purchasedFromDepartment?.name || "—",
+      "Location": asset.location?.name || "N/A",
+      "Vendor": asset.vendor?.name || "N/A",
+      "Price (INR)": asset.cost || 0,
+      "Replacement Value": asset.estimatedReplacementValue || 0,
+      "Purchase Date": asset.purchaseDate ? new Date(asset.purchaseDate).toLocaleDateString() : "—",
+      "Warranty Details": asset.warranty || "—",
+      "Warranty Expiration": asset.warrantyExpiration ? new Date(asset.warrantyExpiration).toLocaleDateString() : "—",
+      "Assigned To": assignedTo,
+      "Assigned Date": assignment ? new Date(assignment.assignedAt).toLocaleDateString() : "—",
+    };
+  });
+}
+
 

@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Sparkles, Loader2 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -72,6 +73,39 @@ export function AddAssetModal({
   const [warrantyExpiration, setWarrantyExpiration] = useState("");
   const [condition, setCondition] = useState("");
   const [attachmentUrl, setAttachmentUrl] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [purchaseUrl, setPurchaseUrl] = useState("");
+  
+  const [isFetchingImage, setIsFetchingImage] = useState(false);
+
+  const handleFetchImage = async () => {
+    if (!purchaseUrl.trim()) {
+      toast.error("Please enter a Purchase Link URL first");
+      return;
+    }
+    setIsFetchingImage(true);
+    try {
+      const response = await fetch("/api/scrape-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: purchaseUrl.trim() }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to fetch image");
+      }
+      if (data.imageUrl) {
+        setImageUrl(data.imageUrl);
+        toast.success("Successfully fetched product image!");
+      } else {
+        toast.error("No product image found on the site.");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Error fetching product image");
+    } finally {
+      setIsFetchingImage(false);
+    }
+  };
 
   // Relations
   const [categoryId, setCategoryId] = useState("");
@@ -126,6 +160,8 @@ export function AddAssetModal({
           replacementValue === "" ? null : Number(replacementValue),
         cost: assetPrice === "" ? null : Number(assetPrice),
         attachmentUrl: attachmentUrl.trim() || null,
+        imageUrl: imageUrl.trim() || null,
+        purchaseUrl: purchaseUrl.trim() || null,
         purchaseDate: purchaseDate || null,
         warranty: warranty.trim() || null,
         warrantyExpiration: warrantyExpiration || null,
@@ -201,6 +237,8 @@ export function AddAssetModal({
       setWarrantyExpiration("");
       setCondition("");
       setAttachmentUrl("");
+      setImageUrl("");
+      setPurchaseUrl("");
 
       setCategoryId("");
       setDepartmentId("");
@@ -676,6 +714,52 @@ export function AddAssetModal({
                   onChange={(e) => setAccessoriesIncluded(e.target.value)}
                   placeholder="Charger, Bag, Mouse, HDMI Cable"
                 />
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-2">
+                <Label htmlFor="imageUrl">Product Image URL</Label>
+                <Input
+                  id="imageUrl"
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  placeholder="https://m.media-amazon.com/images/I/... or any image URL"
+                />
+                {imageUrl && (
+                  <div className="mt-1.5 flex items-center gap-3 p-2 rounded-lg border bg-muted/20">
+                    <img src={imageUrl} alt="Asset preview" className="h-10 w-10 rounded-md object-contain border bg-background" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                    <p className="text-[11px] text-muted-foreground">Product image preview loaded successfully</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="purchaseUrl">Purchase Link URL</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="purchaseUrl"
+                    value={purchaseUrl}
+                    onChange={(e) => setPurchaseUrl(e.target.value)}
+                    placeholder="https://www.amazon.in/dp/... or any ecommerce link"
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleFetchImage}
+                    disabled={isFetchingImage || !purchaseUrl}
+                    className="shrink-0 flex items-center gap-1.5 bg-violet-500/5 hover:bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/30 hover:border-violet-500/50"
+                  >
+                    {isFetchingImage ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-3.5 w-3.5" />
+                    )}
+                    Fetch Image
+                  </Button>
+                </div>
+                <p className="text-[10px] text-muted-foreground">Paste an e-commerce link and click Fetch Image to auto-extract the image link.</p>
               </div>
             </div>
           </div>

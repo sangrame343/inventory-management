@@ -8,17 +8,24 @@ export async function getDashboardStats(companyId: string) {
 
   const [
     assetCounts,
+    assetValueAggregate,
     employeeCounts,
     ticketCounts,
     inventoryCounts,
     transferCounts,
     maintenanceSchedules,
   ] = await Promise.all([
-    // Assets
+    // Assets by status
     db.asset.groupBy({
       by: ["status"],
       where: { companyId },
       _count: { id: true },
+    }),
+
+    // Total asset cost (portfolio value)
+    db.asset.aggregate({
+      where: { companyId },
+      _sum: { cost: true },
     }),
 
     // Employees
@@ -107,6 +114,7 @@ export async function getDashboardStats(companyId: string) {
     disposed: assetCounts
       .filter((c) => c.status === AssetStatus.DISPOSED || c.status === AssetStatus.LOST)
       .reduce((acc, curr) => acc + curr._count.id, 0),
+    totalCost: assetValueAggregate._sum.cost ?? 0,
   };
 
   // Process Inventory Low Stock
@@ -156,6 +164,7 @@ export async function getDashboardCharts(companyId: string) {
     db.assetCategory.findMany({
       where: { companyId },
       select: {
+        id: true,
         name: true,
         _count: {
           select: { assets: true },
@@ -171,6 +180,7 @@ export async function getDashboardCharts(companyId: string) {
     })),
     categoryDistribution: categories
       .map((c) => ({
+        id: c.id,
         name: c.name,
         value: c._count.assets,
       }))

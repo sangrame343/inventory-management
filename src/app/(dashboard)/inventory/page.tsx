@@ -21,7 +21,7 @@ export default async function InventoryPage() {
   if (!session?.user?.activeCompanyId) redirect("/login");
   const companyId = session.user.activeCompanyId;
 
-  const [items, categories, locations, units, employees, assetCategories, departments] = await Promise.all([
+  const [items, categories, locations, units, employees, assetCategories, departments, vendors] = await Promise.all([
     getInventoryItems(),
     getInventoryCategories(),
     getInventoryLocations(),
@@ -29,6 +29,7 @@ export default async function InventoryPage() {
     EmployeeService.getEmployees(companyId),
     db.assetCategory.findMany({ where: { companyId }, orderBy: { name: "asc" } }),
     db.department.findMany({ where: { companyId }, orderBy: { name: "asc" } }),
+    db.vendor.findMany({ where: { companyId }, orderBy: { name: "asc" } }),
   ]);
 
   return (
@@ -42,9 +43,16 @@ export default async function InventoryPage() {
         categories={categories}
         locations={locations}
         units={units}
-        employees={employees.map(e => ({ id: e.id, name: e.fullName }))}
+        employees={employees.map(e => ({ 
+          id: e.id, 
+          name: e.fullName, 
+          employeeId: e.employeeCode, 
+          userId: e.userId 
+        }))}
         assetCategories={assetCategories.map(c => ({ id: c.id, name: c.name }))}
         departments={departments.map(d => ({ id: d.id, name: d.name }))}
+        vendors={vendors.map(v => ({ id: v.id, name: v.name }))}
+        currentUserId={session.user.id}
       />
     </div>
   );

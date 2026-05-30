@@ -14,12 +14,21 @@ interface Option {
   name: string;
 }
 
+interface EmployeeOption {
+  id: string;
+  name: string;
+  employeeId?: string | null;
+  userId?: string | null;
+}
+
 interface InventoryItemActionsProps {
   item: any;
   locations: InventoryLocation[];
-  employees: Option[];
+  employees: EmployeeOption[];
   categories: Option[];
   departments: Option[];
+  vendors: Option[];
+  currentUserId: string;
 }
 
 export function InventoryItemActions({
@@ -28,6 +37,8 @@ export function InventoryItemActions({
   employees,
   categories,
   departments,
+  vendors,
+  currentUserId,
 }: InventoryItemActionsProps) {
   const [movingStock, setMovingStock] = useState<{ direction: "IN" | "OUT" } | null>(null);
   const [adjustingStock, setAdjustingStock] = useState(false);
@@ -76,6 +87,8 @@ export function InventoryItemActions({
           employees={employees}
           categories={categories}
           departments={departments}
+          vendors={vendors}
+          currentUserId={currentUserId}
         />
       )}
     </div>

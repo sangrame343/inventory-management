@@ -37,6 +37,7 @@ export function InventoryTable({
   onStockIn,
   onStockOut,
   onIssue,
+  onDelete,
 }: {
   items: PopulatedItem[];
   onEdit: (item: PopulatedItem) => void;
@@ -44,6 +45,7 @@ export function InventoryTable({
   onStockIn: (item: PopulatedItem) => void;
   onStockOut: (item: PopulatedItem) => void;
   onIssue: (item: PopulatedItem) => void;
+  onDelete: (item: PopulatedItem) => void;
 }) {
 
   return (
@@ -113,6 +115,10 @@ export function InventoryTable({
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => onEdit(item)}>
                           Edit Info
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => onDelete(item)} className="text-red-600 focus:text-red-600">
+                          Delete Item
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

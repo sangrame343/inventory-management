@@ -22,12 +22,13 @@ export default async function InventoryItemPage(props: { params: Promise<{ id: s
   if (!session?.user?.activeCompanyId) redirect("/login");
   const companyId = session.user.activeCompanyId;
 
-  const [item, locations, employees, assetCategories, departments] = await Promise.all([
+  const [item, locations, employees, assetCategories, departments, vendors] = await Promise.all([
     getInventoryItemById(id),
     db.inventoryLocation.findMany({ where: { companyId }, orderBy: { name: "asc" } }),
     EmployeeService.getEmployees(companyId),
     db.assetCategory.findMany({ where: { companyId }, orderBy: { name: "asc" } }),
     db.department.findMany({ where: { companyId }, orderBy: { name: "asc" } }),
+    db.vendor.findMany({ where: { companyId }, orderBy: { name: "asc" } }),
   ]);
 
   if (!item) {
@@ -56,9 +57,16 @@ export default async function InventoryItemPage(props: { params: Promise<{ id: s
       <InventoryItemActions 
         item={item}
         locations={locations}
-        employees={employees.map(e => ({ id: e.id, name: e.fullName }))}
+        employees={employees.map(e => ({ 
+          id: e.id, 
+          name: e.fullName, 
+          employeeId: e.employeeCode, 
+          userId: e.userId 
+        }))}
         categories={assetCategories.map(c => ({ id: c.id, name: c.name }))}
         departments={departments.map(d => ({ id: d.id, name: d.name }))}
+        vendors={vendors.map(v => ({ id: v.id, name: v.name }))}
+        currentUserId={session.user.id}
       />
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

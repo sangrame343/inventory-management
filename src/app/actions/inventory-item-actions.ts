@@ -139,3 +139,25 @@ export async function getInventoryItemById(id: string) {
   if (!item || item.companyId !== companyId) return null;
   return item;
 }
+
+export async function deleteInventoryItem(id: string) {
+  const { companyId } = await getSessionContext();
+
+  const existing = await db.inventoryItem.findUnique({
+    where: { id },
+  });
+
+  if (!existing || existing.companyId !== companyId) {
+    throw new Error("Item not found or unauthorized.");
+  }
+
+  await db.$transaction(async (tx) => {
+    await tx.inventoryTransaction.deleteMany({ where: { itemId: id } });
+    await tx.inventoryAdjustment.deleteMany({ where: { itemId: id } });
+    await tx.inventoryBalance.deleteMany({ where: { itemId: id } });
+    await tx.inventoryItem.delete({ where: { id } });
+  });
+
+  revalidatePath("/inventory");
+  return { success: true };
+}

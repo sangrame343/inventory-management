@@ -56,6 +56,8 @@ export async function POST(req: Request) {
       vendorId,
       warranty,
       warrantyExpiration,
+      imageUrl,
+      purchaseUrl,
       handover,
     } = body ?? {};
 
@@ -202,6 +204,8 @@ export async function POST(req: Request) {
               ? Number(estimatedReplacementValue)
               : null,
           attachmentUrl: attachmentUrl?.trim() || null,
+          imageUrl: imageUrl?.trim() || null,
+          purchaseUrl: purchaseUrl?.trim() || null,
 
           purchaseDate: purchaseDate ? new Date(purchaseDate) : null,
           cost: cost !== null && cost !== undefined && cost !== "" ? Number(cost) : null,

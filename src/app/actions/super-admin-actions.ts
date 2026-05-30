@@ -148,19 +148,97 @@ export async function deleteUser(userId: string) {
   }
 
   try {
-    // Delete the user
-    await db.user.delete({
-      where: { id: userId },
+    await db.$transaction(async (tx) => {
+      // 1. Nullify references in Inventory Transaction & Adjustment
+      await tx.inventoryTransaction.updateMany({
+        where: { createdById: userId },
+        data: { createdById: null },
+      });
+      await tx.inventoryTransaction.updateMany({
+        where: { employeeId: userId },
+        data: { employeeId: null },
+      });
+      await tx.inventoryAdjustment.updateMany({
+        where: { createdById: userId },
+        data: { createdById: null },
+      });
+
+      // 2. Nullify references in Inventory Items
+      await tx.inventoryItem.updateMany({
+        where: { createdById: userId },
+        data: { createdById: null },
+      });
+      await tx.inventoryItem.updateMany({
+        where: { updatedById: userId },
+        data: { updatedById: null },
+      });
+
+      // 3. Delete approvals requested by or reviewed by this user
+      await tx.approvalRequest.deleteMany({
+        where: {
+          OR: [
+            { requestedById: userId },
+            { reviewedById: userId },
+          ],
+        },
+      });
+
+      // 4. Delete Maintenance Tickets created by or assigned to this user
+      await tx.maintenanceTicket.deleteMany({
+        where: {
+          OR: [
+            { createdById: userId },
+            { assignedToId: userId },
+          ],
+        },
+      });
+
+      // 5. Delete Asset Transfers involving this user
+      await tx.assetTransfer.deleteMany({
+        where: {
+          OR: [
+            { requestedById: userId },
+            { approvedById: userId },
+            { completedById: userId },
+            { updatedById: userId },
+          ],
+        },
+      });
+
+      // 6. Delete Asset Assignments involving this user
+      await tx.assetAssignment.deleteMany({
+        where: {
+          OR: [
+            { userId },
+            { assignedById: userId },
+            { managerUserId: userId },
+          ],
+        },
+      });
+
+      // 7. Delete CompanyUser associations
+      await tx.companyUser.deleteMany({
+        where: { userId },
+      });
+
+      // 8. Delete NextAuth Accounts & Sessions
+      await tx.account.deleteMany({
+        where: { userId },
+      });
+      await tx.session.deleteMany({
+        where: { userId },
+      });
+
+      // 9. Delete the User record
+      await tx.user.delete({
+        where: { id: userId },
+      });
     });
 
     revalidatePath("/super-admin/users");
     return { success: true };
   } catch (error: any) {
     console.error("Delete user fail:", error);
-    // Return friendly error if constraint fails
-    if (error.code === 'P2003') {
-      return { error: "Cannot delete user because they have associated records (e.g. assets, tickets, logs). Please reassign or delete those records first." };
-    }
     return { error: error.message || "Failed to delete user" };
   }
 }
@@ -193,3 +271,56 @@ export async function updateUser(userId: string, data: { name: string; email: st
     return { error: error.message || "Failed to update user" };
   }
 }
+
+export async function createActiveUser(data: {
+  name: string;
+  email: string;
+  mobile?: string;
+  password?: string;
+  companyId: string;
+  role: Role;
+}) {
+  if (!(await isSuperAdminReq())) {
+    throw new Error("Unauthorized");
+  }
+
+  try {
+    const existing = await db.user.findUnique({ where: { email: data.email } });
+    if (existing) {
+      return { error: "A user with this email already exists" };
+    }
+
+    const passwordHash = await bcrypt.hash(data.password || "Password123", 10);
+
+    const isSuperAdminRequested = data.role === Role.SUPER_ADMIN;
+
+    await db.$transaction(async (tx) => {
+      const newUser = await tx.user.create({
+        data: {
+          name: data.name,
+          email: data.email,
+          mobile: data.mobile,
+          passwordHash,
+          status: "ACTIVE",
+          activeCompanyId: data.companyId,
+          isSuperAdmin: isSuperAdminRequested,
+        },
+      });
+
+      await tx.companyUser.create({
+        data: {
+          companyId: data.companyId,
+          userId: newUser.id,
+          role: data.role,
+        },
+      });
+    });
+
+    revalidatePath("/super-admin/users");
+    return { success: true };
+  } catch (error: any) {
+    console.error("Create active user fail:", error);
+    return { error: error.message || "Failed to create user" };
+  }
+}
+

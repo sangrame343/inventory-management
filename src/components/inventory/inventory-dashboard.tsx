@@ -13,6 +13,8 @@ import { StockAdjustmentModal } from "./stock-adjustment-modal";
 import { StockMovementModal } from "./stock-movement-modal";
 import { IssueInventoryModal } from "./issue-inventory-modal";
 import { InventoryImportButton } from "./inventory-import-button";
+import { deleteInventoryItem } from "@/app/actions/inventory-item-actions";
+import { toast } from "sonner";
 
 import type { InventoryItem, InventoryBalance, InventoryCategory, InventoryLocation, UnitOfMeasure } from "@prisma/client";
 
@@ -31,14 +33,18 @@ export function InventoryDashboard({
   employees,
   assetCategories,
   departments,
+  vendors,
+  currentUserId,
 }: {
   initialItems: PopulatedItem[];
   categories: InventoryCategory[];
   locations: InventoryLocation[];
   units: UnitOfMeasure[];
-  employees: { id: string; name: string }[];
+  employees: { id: string; name: string; employeeId?: string | null; userId?: string | null }[];
   assetCategories: { id: string; name: string }[];
   departments: { id: string; name: string }[];
+  vendors: { id: string; name: string }[];
+  currentUserId: string;
 }) {
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -74,6 +80,17 @@ export function InventoryDashboard({
     if (qty <= 0) outOfStockCount++;
     else if (qty <= item.reorderLevel) lowStockCount++;
   });
+
+  const handleDeleteItem = async (item: PopulatedItem) => {
+    if (window.confirm(`Are you sure you want to delete "${item.name}"? This will permanently delete all associated stock levels and transactions.`)) {
+      try {
+        await deleteInventoryItem(item.id);
+        toast.success(`Successfully deleted "${item.name}"`);
+      } catch (err: any) {
+        toast.error(err.message || "Failed to delete item");
+      }
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -139,6 +156,7 @@ export function InventoryDashboard({
           onStockIn={(i) => setMovingStockItem({item: i, direction: "IN"})}
           onStockOut={(i) => setMovingStockItem({item: i, direction: "OUT"})}
           onIssue={(i) => setIssuingStockItem(i)}
+          onDelete={handleDeleteItem}
         />
       </div>
 
@@ -183,6 +201,8 @@ export function InventoryDashboard({
           employees={employees}
           categories={assetCategories}
           departments={departments}
+          vendors={vendors}
+          currentUserId={currentUserId}
         />
       )}
     </div>

@@ -1,10 +1,14 @@
 import { getActiveUsers } from "@/app/actions/super-admin-actions";
 import { UsersClient } from "./users-client";
+import { db } from "@/lib/db";
 
 export const dynamic = 'force-dynamic';
 
 export default async function SuperAdminUsersPage() {
-  const users = await getActiveUsers();
+  const [users, companies] = await Promise.all([
+    getActiveUsers(),
+    db.company.findMany({ select: { id: true, name: true }, orderBy: { name: 'asc' } }),
+  ]);
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
@@ -15,7 +19,7 @@ export default async function SuperAdminUsersPage() {
         Review and manage active users across all companies. You can delete users who are no longer needed.
       </p>
       
-      <UsersClient users={users} />
+      <UsersClient users={users} companies={companies} />
     </div>
   );
 }

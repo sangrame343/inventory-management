@@ -289,7 +289,7 @@ export function AssetTableClient({
                   </div>
                 </TableHead>
 
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="sticky right-0 bg-card z-20 text-right border-l shadow-[-4px_0_4px_-2px_rgba(0,0,0,0.05)]">Actions</TableHead>
               </TableRow>
             </TableHeader>
 
@@ -310,7 +310,16 @@ export function AssetTableClient({
                   return (
                     <TableRow
                       key={asset.id}
-                      className={isSelected ? "bg-muted/50" : ""}
+                      className={cn(
+                        "cursor-pointer hover:bg-muted/50 transition-colors",
+                        isSelected ? "bg-muted/50" : ""
+                      )}
+                      onClick={(e) => {
+                        if ((e.target as HTMLElement).closest('button, a, input, [role="menuitem"], [role="checkbox"], [role="button"]')) {
+                          return;
+                        }
+                        router.push(`/assets/${asset.id}`);
+                      }}
                     >
                       <TableCell>
                         <Checkbox
@@ -456,7 +465,7 @@ export function AssetTableClient({
                         : "N/A"}
                       </TableCell>
 
-                      <TableCell className="text-right">
+                      <TableCell className="sticky right-0 bg-card z-10 text-right border-l shadow-[-4px_0_4px_-2px_rgba(0,0,0,0.05)]">
                         <div className="flex justify-end gap-2">
                           <Link
                             href={`/assets/${asset.id}`}
