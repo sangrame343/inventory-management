@@ -8,6 +8,7 @@ import { Role } from "@prisma/client";
 // ✅ FIXED: named import instead of default
 import CompanySwitcherWrapper from "@/components/company-switcher-wrapper";
 import { ModeToggle } from "@/components/mode-toggle";
+import { DynamicHeader } from "@/components/dynamic-header";
 
 import NextAuthSessionProvider from "@/components/providers/session-provider";
 
@@ -49,10 +50,11 @@ export default async function DashboardLayout({
         <AppSidebar />
 
         <div className="flex flex-1 flex-col overflow-hidden">
-          <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-border/50 px-6 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 bg-background">
-            <div className="flex items-center gap-2">
-              <SidebarTrigger className="-ml-1" />
-              <div className="text-xl font-bold text-foreground">Dashboard</div>
+          <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-border/40 px-6 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 bg-background/80 backdrop-blur-md sticky top-0 z-50">
+            <div className="flex items-center gap-3">
+              <SidebarTrigger className="-ml-1 hover:bg-muted/60 transition-colors" />
+              <div className="h-4 w-[1px] bg-border/60" />
+              <DynamicHeader />
             </div>
 
             <div className="flex items-center gap-4">

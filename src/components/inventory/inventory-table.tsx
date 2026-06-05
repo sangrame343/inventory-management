@@ -28,6 +28,8 @@ type PopulatedItem = InventoryItem & {
   unit: UnitOfMeasure | null;
   defaultLocation: InventoryLocation | null;
   balances: InventoryBalance[];
+  purchasedFromDepartment?: { id: string; name: string } | null;
+  department?: { id: string; name: string } | null;
 };
 
 export function InventoryTable({
@@ -36,7 +38,8 @@ export function InventoryTable({
   onAdjustStock,
   onStockIn,
   onStockOut,
-  onIssue,
+  onAssignEmployee,
+  onAssignDepartment,
   onDelete,
 }: {
   items: PopulatedItem[];
@@ -44,7 +47,8 @@ export function InventoryTable({
   onAdjustStock: (item: PopulatedItem) => void;
   onStockIn: (item: PopulatedItem) => void;
   onStockOut: (item: PopulatedItem) => void;
-  onIssue: (item: PopulatedItem) => void;
+  onAssignEmployee: (item: PopulatedItem) => void;
+  onAssignDepartment: (item: PopulatedItem) => void;
   onDelete: (item: PopulatedItem) => void;
 }) {
 
@@ -56,8 +60,12 @@ export function InventoryTable({
             <TableHead>SKU</TableHead>
             <TableHead>Item Name</TableHead>
             <TableHead>Category</TableHead>
+            <TableHead className="text-right">Total Stock</TableHead>
+            <TableHead className="text-right">Available Stock</TableHead>
+            <TableHead className="text-right">Assigned Stock</TableHead>
+            <TableHead>Purchased From</TableHead>
+            <TableHead>Owner</TableHead>
             <TableHead>Location</TableHead>
-            <TableHead className="text-right">Quantity</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
@@ -65,13 +73,13 @@ export function InventoryTable({
         <TableBody>
           {items.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={7} className="h-24 text-center">
+              <TableCell colSpan={11} className="h-24 text-center">
                 No items found.
               </TableCell>
             </TableRow>
           ) : (
             items.map((item) => {
-              const qty = item.balances.reduce((acc, b) => acc + b.quantityOnHand, 0);
+              const qty = item.availableQuantity;
               
               let statusBadge = <Badge variant="default" className="bg-green-600">Healthy</Badge>;
               if (qty <= 0) {
@@ -83,12 +91,22 @@ export function InventoryTable({
               return (
                 <TableRow key={item.id}>
                   <TableCell className="font-medium">{item.sku}</TableCell>
-                  <TableCell>{item.name}</TableCell>
-                  <TableCell>{item.category?.name || "Uncategorized"}</TableCell>
-                  <TableCell>{item.defaultLocation?.name || "N/A"}</TableCell>
-                  <TableCell className="text-right font-semibold">
-                    {qty} {item.unit?.symbol || "pcs"}
+                  <TableCell className="max-w-[250px] truncate" title={item.name}>
+                    {item.name}
                   </TableCell>
+                  <TableCell>{item.category?.name || "Uncategorized"}</TableCell>
+                  <TableCell className="text-right font-semibold">
+                    {item.totalQuantity} {item.unit?.symbol || "pcs"}
+                  </TableCell>
+                  <TableCell className="text-right font-semibold text-emerald-600">
+                    {item.availableQuantity} {item.unit?.symbol || "pcs"}
+                  </TableCell>
+                  <TableCell className="text-right font-semibold text-violet-600">
+                    {item.assignedQuantity} {item.unit?.symbol || "pcs"}
+                  </TableCell>
+                  <TableCell>{item.purchasedFromDepartment?.name || "N/A"}</TableCell>
+                  <TableCell>{item.department?.name || "N/A"}</TableCell>
+                  <TableCell>{item.defaultLocation?.name || "N/A"}</TableCell>
                   <TableCell>{statusBadge}</TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
@@ -99,23 +117,28 @@ export function InventoryTable({
                       <DropdownMenuContent align="end">
                         <DropdownMenuGroup>
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuItem onClick={() => window.location.href = `/inventory/${item.id}`}>
+                            View Details
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => onEdit(item)}>
+                            Edit Info
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => onStockIn(item)}>
-                            Stock In
+                            Add More Stock
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => onStockOut(item)}>
-                            Stock Out
+                          <DropdownMenuItem onClick={() => onAssignEmployee(item)} className="text-blue-600 focus:text-blue-600 font-semibold">
+                            Assign to Employee
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => onIssue(item)} className="text-blue-600 focus:text-blue-600 font-semibold">
-                            Issue to Employee
+                          <DropdownMenuItem onClick={() => onAssignDepartment(item)} className="text-indigo-600 focus:text-indigo-600 font-semibold">
+                            Assign to Department
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => onAdjustStock(item)}>
-                            Adjust Stock
+                          <DropdownMenuItem onClick={() => window.location.href = `/inventory/${item.id}#transactions`}>
+                            View Transactions
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => window.location.href = `/inventory/${item.id}#assets`}>
+                            View Generated Assets
                           </DropdownMenuItem>
                         </DropdownMenuGroup>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => onEdit(item)}>
-                          Edit Info
-                        </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => onDelete(item)} className="text-red-600 focus:text-red-600">
                           Delete Item

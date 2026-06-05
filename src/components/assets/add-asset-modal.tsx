@@ -68,9 +68,56 @@ export function AddAssetModal({
   const [accessoriesIncluded, setAccessoriesIncluded] = useState("");
   const [replacementValue, setReplacementValue] = useState("");
   const [assetPrice, setAssetPrice] = useState("");
-  const [purchaseDate, setPurchaseDate] = useState("");
+  const [purchaseDate, setPurchaseDate] = useState(
+    new Date().toISOString().slice(0, 10),
+  );
   const [warranty, setWarranty] = useState("");
   const [warrantyExpiration, setWarrantyExpiration] = useState("");
+
+  const updateWarrantyExpiration = (warrantyText: string, pDate: string) => {
+    if (!pDate) return;
+    const baseDate = new Date(pDate);
+    if (isNaN(baseDate.getTime())) return;
+
+    const trimmed = warrantyText.trim();
+    if (!trimmed) return;
+
+    const match = trimmed.match(/^(\d+(?:\.\d+)?)\s*(year|month|day|week|yr|mo|d|wk|s)?s?$/i);
+    if (match) {
+      const value = parseFloat(match[1]);
+      const unit = (match[2] || "year").toLowerCase();
+
+      if (unit.startsWith("y")) {
+        baseDate.setFullYear(baseDate.getFullYear() + value);
+      } else if (unit.startsWith("m")) {
+        baseDate.setMonth(baseDate.getMonth() + value);
+      } else if (unit.startsWith("w")) {
+        baseDate.setDate(baseDate.getDate() + value * 7);
+      } else if (unit.startsWith("d")) {
+        baseDate.setDate(baseDate.getDate() + value);
+      }
+      setWarrantyExpiration(baseDate.toISOString().slice(0, 10));
+      return;
+    }
+
+    const justNumber = trimmed.match(/^(\d+(?:\.\d+)?)$/);
+    if (justNumber) {
+      const value = parseFloat(justNumber[1]);
+      baseDate.setFullYear(baseDate.getFullYear() + value);
+      setWarrantyExpiration(baseDate.toISOString().slice(0, 10));
+    }
+  };
+
+  const handlePurchaseDateChange = (val: string) => {
+    setPurchaseDate(val);
+    if (val) {
+      const currentWarranty = warranty.trim() || "1 Year";
+      if (!warranty.trim()) {
+        setWarranty("1 Year");
+      }
+      updateWarrantyExpiration(currentWarranty, val);
+    }
+  };
   const [condition, setCondition] = useState("");
   const [attachmentUrl, setAttachmentUrl] = useState("");
   const [imageUrl, setImageUrl] = useState("");
@@ -92,16 +139,39 @@ export function AddAssetModal({
       });
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.error || "Failed to fetch image");
+        throw new Error(data.error || "Failed to fetch product details");
       }
+      
+      let autofilledFields = [];
       if (data.imageUrl) {
         setImageUrl(data.imageUrl);
-        toast.success("Successfully fetched product image!");
+        autofilledFields.push("Image");
+      }
+      if (data.title && (!assetName || !assetName.trim())) {
+        setAssetName(data.title);
+        autofilledFields.push("Asset Name");
+      }
+      if (data.brand && (!brand || !brand.trim())) {
+        setBrand(data.brand);
+        autofilledFields.push("Brand");
+      }
+      if (data.price && (!assetPrice || !assetPrice.trim())) {
+        setAssetPrice(data.price);
+        autofilledFields.push("Cost");
+      }
+      if (data.description && (!specifications || !specifications.trim())) {
+        const cleanDesc = data.description.length > 150 ? data.description.slice(0, 147) + "..." : data.description;
+        setSpecifications(cleanDesc);
+        autofilledFields.push("Specifications");
+      }
+
+      if (autofilledFields.length > 0) {
+        toast.success(`Autofilled: ${autofilledFields.join(", ")}`);
       } else {
-        toast.error("No product image found on the site.");
+        toast.success("Fetched details successfully, but no fields were empty/updated.");
       }
     } catch (err: any) {
-      toast.error(err.message || "Error fetching product image");
+      toast.error(err.message || "Error fetching product details");
     } finally {
       setIsFetchingImage(false);
     }
@@ -232,7 +302,7 @@ export function AddAssetModal({
       setAccessoriesIncluded("");
       setReplacementValue("");
       setAssetPrice("");
-      setPurchaseDate("");
+      setPurchaseDate(new Date().toISOString().slice(0, 10));
       setWarranty("");
       setWarrantyExpiration("");
       setCondition("");
@@ -261,7 +331,7 @@ export function AddAssetModal({
       setTermsAccepted(false);
     },
     onError: (error: Error) => {
-      alert(error.message);
+      toast.error(error.message);
     },
   });
 
@@ -269,7 +339,7 @@ export function AddAssetModal({
     e.preventDefault();
 
     if (handoverTargetType !== "NONE" && !termsAccepted) {
-      alert("Please accept the company IT policy / terms and conditions.");
+      toast.warning("Please accept the company IT policy / terms and conditions.");
       return;
     }
 
@@ -668,7 +738,7 @@ export function AddAssetModal({
                   id="purchaseDate"
                   type="date"
                   value={purchaseDate}
-                  onChange={(e) => setPurchaseDate(e.target.value)}
+                  onChange={(e) => handlePurchaseDateChange(e.target.value)}
                 />
               </div>
 
@@ -677,7 +747,10 @@ export function AddAssetModal({
                 <Input
                   id="warranty"
                   value={warranty}
-                  onChange={(e) => setWarranty(e.target.value)}
+                  onChange={(e) => {
+                    setWarranty(e.target.value);
+                    updateWarrantyExpiration(e.target.value, purchaseDate);
+                  }}
                   placeholder="e.g. 1 Year Limited"
                 />
               </div>

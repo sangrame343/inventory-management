@@ -4,6 +4,8 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import QueryProvider from "@/components/providers/query-provider";
+import { ConfirmDialogProvider } from "@/components/ui/confirm-dialog";
+import { Toaster } from "sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,7 +36,11 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <ThemeProvider attribute="class" defaultTheme="system">
           <TooltipProvider>
-            <QueryProvider>{children}</QueryProvider>
+            <QueryProvider>
+              {children}
+              <ConfirmDialogProvider />
+              <Toaster closeButton position="top-right" richColors />
+            </QueryProvider>
           </TooltipProvider>
         </ThemeProvider>
       </body>

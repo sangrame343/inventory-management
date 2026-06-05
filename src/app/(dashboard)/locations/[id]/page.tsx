@@ -24,7 +24,7 @@ export default async function LocationDetailPage({ params }: { params: { id: str
     where: { locationId: params.id, companyId: session.user.activeCompanyId },
     include: { 
       category: true, 
-      assignments: { where: { returnedAt: null }, include: { employee: true, user: true } } 
+      assignments: { where: { returnedAt: null }, include: { employee: true, user: true, department: true } } 
     },
     orderBy: { createdAt: "desc" }
   });
@@ -34,7 +34,7 @@ export default async function LocationDetailPage({ params }: { params: { id: str
     include: { 
       category: true, 
       location: true, 
-      assignments: { where: { returnedAt: null }, include: { employee: true, user: true } } 
+      assignments: { where: { returnedAt: null }, include: { employee: true, user: true, department: true } } 
     },
     orderBy: { createdAt: "desc" }
   });

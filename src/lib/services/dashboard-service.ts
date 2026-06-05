@@ -105,6 +105,52 @@ export async function getDashboardStats(companyId: string) {
     }),
   ]);
 
+  // Process Warranty Expirations
+  const [warrantyExpiredCount, warrantyExpiringMonthCount, warrantyExpiringYearCount] = await Promise.all([
+    db.asset.count({
+      where: {
+        companyId,
+        warrantyExpiration: { lt: now },
+      },
+    }),
+    db.asset.count({
+      where: {
+        companyId,
+        warrantyExpiration: {
+          gte: now,
+          lte: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
+        },
+      },
+    }),
+    db.asset.count({
+      where: {
+        companyId,
+        warrantyExpiration: {
+          gte: now,
+          lte: new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000),
+        },
+      },
+    }),
+  ]);
+
+  // Query actual assets with soonest or expired warranties
+  const expiringAssets = await db.asset.findMany({
+    where: {
+      companyId,
+      warrantyExpiration: { not: null },
+    },
+    orderBy: {
+      warrantyExpiration: "asc",
+    },
+    take: 5,
+    select: {
+      id: true,
+      name: true,
+      assetTag: true,
+      warrantyExpiration: true,
+    },
+  });
+
   // Process Asset Counts
   const assets = {
     total: assetCounts.reduce((acc, curr) => acc + curr._count.id, 0),
@@ -149,6 +195,15 @@ export async function getDashboardStats(companyId: string) {
       pending: transferCounts[0],
       inTransit: transferCounts[1],
       completedThisMonth: transferCounts[2],
+    },
+    warranties: {
+      expired: warrantyExpiredCount,
+      expiringThisMonth: warrantyExpiringMonthCount,
+      expiringThisYear: warrantyExpiringYearCount,
+      expiringAssets: expiringAssets.map((asset) => ({
+        ...asset,
+        warrantyExpiration: asset.warrantyExpiration!,
+      })),
     },
     upcomingSchedules: maintenanceSchedules,
   };

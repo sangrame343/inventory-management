@@ -21,12 +21,12 @@ interface Props {
 export function LocationTree({ locations, level = 0 }: Props) {
   if (locations.length === 0 && level === 0) {
     return (
-      <div className="flex flex-col items-center justify-center p-20 text-center border-2 border-dashed rounded-[2.5rem] bg-muted/20 border-border/50 animate-in fade-in duration-700">
-        <div className="p-6 bg-background rounded-full shadow-2xl shadow-primary/10 mb-6">
-           <MapPin size={48} className="text-primary opacity-20" />
+      <div className="flex flex-col items-center justify-center p-12 text-center border border-dashed rounded-xl bg-muted/10 border-border/40 animate-in fade-in duration-500">
+        <div className="p-4 bg-background rounded-full border border-border/40 shadow-xs mb-4">
+           <MapPin size={32} className="text-primary/60" />
         </div>
-        <h3 className="text-xl font-black uppercase tracking-tight italic">No physical sites found</h3>
-        <p className="text-xs text-muted-foreground font-semibold mt-2 max-w-[240px]">Start by creating a root location to begin your organizational hierarchy.</p>
+        <h3 className="text-sm font-semibold text-foreground/80">No locations found</h3>
+        <p className="text-xs text-muted-foreground/60 mt-1 max-w-xs">Start by adding a top-level location to begin your organizational structure.</p>
       </div>
     );
   }
@@ -90,53 +90,53 @@ function LocationItem({ location, level }: { location: LocationTreeType; level: 
 
   return (
     <div className="flex flex-col animate-in slide-in-from-left-2 duration-300">
-      <div className="flex items-center gap-3 py-3 px-4 rounded-2xl hover:bg-primary/3 transition-all group border border-transparent hover:border-primary/10">
+      <div className="flex items-center gap-3 py-2 px-3 rounded-xl hover:bg-muted/40 transition-all group border border-transparent hover:border-border/30">
         {hasChildren ? (
           <button 
             onClick={() => setIsOpen(!isOpen)} 
-            className="text-muted-foreground hover:text-primary transition-colors outline-none size-6 flex items-center justify-center rounded-lg hover:bg-background shadow-sm"
+            className="text-muted-foreground/60 hover:text-primary transition-colors outline-none size-6 flex items-center justify-center rounded-md hover:bg-background shadow-2xs border border-border/20"
           >
-            {isOpen ? <ChevronDown size={14} className="stroke-3" /> : <ChevronRight size={14} className="stroke-3" />}
+            {isOpen ? <ChevronDown size={13} className="stroke-2" /> : <ChevronRight size={13} className="stroke-2" />}
           </button>
         ) : (
           <div className="size-6 shrink-0 flex items-center justify-center">
-             <div className="size-1.5 rounded-full bg-primary/20" />
+             <div className="size-1 rounded-full bg-muted-foreground/30" />
           </div>
         )}
         
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <div className={cn(
-            "p-2 rounded-xl shrink-0 transition-colors shadow-sm",
-            level === 0 ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground group-hover:bg-primary/5 group-hover:text-primary"
+            "p-1.5 rounded-lg shrink-0 transition-colors shadow-3xs border border-border/10",
+            level === 0 ? "bg-primary/5 text-primary border-primary/10" : "bg-muted/80 text-muted-foreground group-hover:bg-primary/5 group-hover:text-primary group-hover:border-primary/10"
           )}>
-            {level === 0 ? <Building size={18} /> : <MapPin size={16} />}
+            {level === 0 ? <Building size={15} /> : <MapPin size={14} />}
           </div>
           <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-2">
               <span className={cn(
-                "font-black text-sm tracking-tight truncate group-hover:text-primary transition-colors uppercase italic", 
-                !location.isActive && "text-muted-foreground/50 line-through decoration-destructive/50"
+                "font-semibold text-sm tracking-tight truncate group-hover:text-primary transition-colors text-foreground/80", 
+                !location.isActive && "text-muted-foreground/45 line-through decoration-destructive/40"
               )}>
                 {location.name}
               </span>
               {location.code && (
-                <span className="text-[9px] text-primary/60 bg-primary/5 border border-primary/10 px-2 py-0.5 rounded-lg font-black uppercase tracking-tighter shrink-0">
+                <span className="text-[10px] text-primary bg-primary/5 border border-primary/15 px-1.5 py-0.5 rounded font-mono font-medium tracking-tight shrink-0">
                   {location.code}
                 </span>
               )}
               {!location.isActive && (
-                <Badge variant="outline" className="text-[8px] h-4 px-1.5 uppercase font-black tracking-[0.15em] border-destructive/20 text-destructive/60 bg-destructive/5 shadow-none">Disabled</Badge>
+                <Badge variant="outline" className="text-[9px] h-4.5 px-1.5 uppercase font-bold tracking-wider border-destructive/20 text-destructive/80 bg-destructive/5 shadow-none rounded">Disabled</Badge>
               )}
             </div>
           </div>
         </div>
 
-        <div className="hidden md:flex items-center gap-6 text-[10px] uppercase font-black tracking-widest text-muted-foreground/60 mr-4">
-          <div className="flex items-center gap-1.5 group-hover:text-primary/70 transition-colors">
-            <span className="text-foreground">{location._count?.assets || 0}</span> Assets
+        <div className="hidden md:flex items-center gap-4 text-xs font-semibold text-muted-foreground/60 mr-4">
+          <div className="flex items-center gap-1 transition-colors">
+            <span className="text-foreground/80">{location._count?.assets || 0}</span> assets
           </div>
-          <div className="flex items-center gap-1.5 group-hover:text-primary/70 transition-colors">
-            <span className="text-foreground">{location._count?.employees || 0}</span> Staff
+          <div className="flex items-center gap-1 transition-colors">
+            <span className="text-foreground/80">{location._count?.employees || 0}</span> staff
           </div>
         </div>
 
@@ -190,37 +190,37 @@ function LocationItem({ location, level }: { location: LocationTreeType; level: 
       />
 
       <Dialog open={isConfirmOpen} onOpenChange={(open) => !open && setIsConfirmOpen(false)}>
-        <DialogContent className="rounded-[2rem] border-none shadow-2xl">
+        <DialogContent className="rounded-xl border border-border/40 shadow-xl max-w-md p-6">
           <DialogHeader>
-            <DialogTitle className="text-xl font-black uppercase tracking-tight italic text-destructive">
-              {location.isActive ? "Security Protocol: Deactivation" : "CRITICAL: Permanent Deletion"}
+            <DialogTitle className="text-base font-bold text-destructive">
+              {location.isActive ? "Deactivate Location" : "Delete Location"}
             </DialogTitle>
-            <DialogDescription className="font-semibold text-muted-foreground mt-2">
+            <DialogDescription className="text-xs text-muted-foreground mt-2 leading-relaxed">
               {location.isActive ? (
                 <>
-                  Are you sure you want to disable <strong>{location.name}</strong>? 
+                  Are you sure you want to deactivate <strong>{location.name}</strong>? 
                   <br/><br/>
-                  This will block the location and all its sub-locations from new assignments. The operation will fail if active assets or employees are currently mapped to this site.
+                  This will prevent the location and its sub-locations from receiving new assignments. This action will fail if active assets or employees are currently mapped here.
                 </>
               ) : (
                 <>
-                  You are about to PERMANENTLY delete <strong>{location.name}</strong> from the registry.
+                  Are you sure you want to permanently delete <strong>{location.name}</strong>? 
                   <br/><br/>
-                  This action cannot be undone. System will block this if any historical data (even old assets) remains linked for audit purposes.
+                  This action cannot be undone. This will fail if any historical data remains linked to this location.
                 </>
               )}
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="gap-3 pt-4">
-            <Button variant="ghost" onClick={() => setIsConfirmOpen(false)} className="rounded-2xl h-12 px-6 font-black uppercase text-[10px] tracking-widest border-none">
-              Abort Action
+          <DialogFooter className="gap-2 pt-4">
+            <Button variant="ghost" onClick={() => setIsConfirmOpen(false)} className="rounded-lg h-9 px-4 text-xs font-semibold">
+              Cancel
             </Button>
             <Button 
               onClick={(e) => { e.preventDefault(); handleAction(); }}
-              className="rounded-2xl h-12 px-8 bg-destructive text-destructive-foreground hover:bg-destructive/90 font-black uppercase text-[11px] tracking-widest shadow-[0_10px_20px_-10px_rgba(239,68,68,0.5)]"
+              className="rounded-lg h-9 px-4 bg-destructive text-destructive-foreground hover:bg-destructive/90 text-xs font-semibold shadow-2xs"
               disabled={isActionProcessing}
             >
-              {isActionProcessing ? <Loader2 className="animate-spin size-4" /> : (location.isActive ? "Confirm & Disable" : "Confirm Purge")}
+              {isActionProcessing ? <Loader2 className="animate-spin size-4" /> : (location.isActive ? "Deactivate" : "Delete")}
             </Button>
           </DialogFooter>
         </DialogContent>

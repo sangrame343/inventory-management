@@ -60,7 +60,7 @@ export function QuickActions({ role }: QuickActionsProps) {
   const visibleActions = actions.filter(a => a.show);
 
   return (
-    <Card className="border-none bg-background/50 backdrop-blur-sm shadow-sm ring-1 ring-border/50">
+    <Card className="border-none bg-background/50 backdrop-blur-sm shadow-sm ring-1 ring-border/50 shrink-0">
       <CardHeader>
         <CardTitle className="text-lg font-semibold">Quick Actions</CardTitle>
       </CardHeader>

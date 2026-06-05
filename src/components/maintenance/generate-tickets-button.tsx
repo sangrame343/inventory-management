@@ -5,6 +5,8 @@ import { RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 
+import { toast } from "sonner";
+
 export function GenerateTicketsButton() {
   const router = useRouter();
 
@@ -20,11 +22,11 @@ export function GenerateTicketsButton() {
       return res.json();
     },
     onSuccess: (data) => {
-      alert(data.message || "Tickets generated successfully.");
+      toast.success(data.message || "Tickets generated successfully.");
       router.refresh();
     },
     onError: (err: any) => {
-      alert(err.message);
+      toast.error(err.message);
     },
   });
 

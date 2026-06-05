@@ -446,3 +446,267 @@ export async function getInventoryLedgerSummary() {
     take: 50,
   });
 }
+
+export type AssignInventoryStockInput = {
+  itemId: string;
+  locationId: string;
+  quantity: number;
+  notes?: string;
+  employeeId?: string | null;
+  departmentId?: string | null;
+  handoverType?: string;
+  physicalCondition?: string;
+  functionalStatus?: string;
+  handoverDate?: string;
+  managerUserId?: string | null;
+  issuingOfficerName?: string | null;
+  employeeSignatureName?: string | null;
+  termsAccepted?: boolean;
+  serialNumbers?: string[];
+};
+
+export async function assignInventoryStock(input: AssignInventoryStockInput) {
+  const { companyId, userId } = await getSessionContext();
+
+  const userCompanyRole = await db.companyUser.findUnique({
+    where: { companyId_userId: { companyId, userId } },
+  });
+  const session = await auth();
+  const isSuperAdmin = session?.user?.isSuperAdmin;
+  const isCompanyAdmin = userCompanyRole?.role === "ADMIN" || userCompanyRole?.role === "SUPER_ADMIN" || isSuperAdmin;
+  if (!isCompanyAdmin) {
+    throw new Error("Unauthorized: Only Admins or Super Admins can assign stock.");
+  }
+
+  if (input.quantity <= 0) {
+    throw new Error("Quantity to assign must be greater than zero.");
+  }
+
+  if (!input.employeeId && !input.departmentId) {
+    throw new Error("Either Employee or Department is required for assignment.");
+  }
+  if (input.employeeId && input.departmentId) {
+    throw new Error("Cannot assign to both Employee and Department simultaneously.");
+  }
+
+  const result = await db.$transaction(async (tx) => {
+    const item = await tx.inventoryItem.findUnique({
+      where: { id: input.itemId },
+    });
+    if (!item || item.companyId !== companyId) {
+      throw new Error("Inventory Item not found.");
+    }
+    if (item.availableQuantity < input.quantity) {
+      throw new Error(`Insufficient available inventory stock. Requested: ${input.quantity}, Available: ${item.availableQuantity}`);
+    }
+
+    const balance = await tx.inventoryBalance.findUnique({
+      where: {
+        companyId_itemId_locationId: {
+          companyId,
+          itemId: input.itemId,
+          locationId: input.locationId,
+        },
+      },
+    });
+    if (!balance || balance.availableQty < input.quantity) {
+      throw new Error(`Insufficient location stock. Requested: ${input.quantity}, Available at location: ${balance?.availableQty || 0}`);
+    }
+
+    const updatedItem = await tx.inventoryItem.update({
+      where: { id: item.id },
+      data: {
+        availableQuantity: { decrement: input.quantity },
+        assignedQuantity: { increment: input.quantity },
+      },
+    });
+
+    const updatedBalance = await tx.inventoryBalance.update({
+      where: { id: balance.id },
+      data: {
+        quantityOnHand: { decrement: input.quantity },
+        availableQty: { decrement: input.quantity },
+      },
+    });
+
+    const invAssignment = await tx.inventoryAssignment.create({
+      data: {
+        inventoryItemId: input.itemId,
+        employeeId: input.employeeId || null,
+        departmentId: input.departmentId || null,
+        quantity: input.quantity,
+        handoverType: input.handoverType || null,
+        physicalCondition: input.physicalCondition || null,
+        functionalStatus: input.functionalStatus || null,
+        notes: input.notes || null,
+        createdById: userId,
+      },
+    });
+
+    let transUserLink = null;
+    if (input.employeeId) {
+      const emp = await tx.employee.findUnique({
+        where: { id: input.employeeId },
+        select: { userId: true },
+      });
+      transUserLink = emp?.userId || null;
+    }
+
+    const txn = await tx.inventoryTransaction.create({
+      data: {
+        companyId,
+        itemId: input.itemId,
+        locationId: input.locationId,
+        direction: "OUT",
+        movementType: input.employeeId ? "ISSUE_TO_EMPLOYEE" : "ISSUE_TO_ASSET",
+        quantity: input.quantity,
+        balanceAfter: updatedBalance.quantityOnHand,
+        notes: input.notes || `Stock assigned to ${input.employeeId ? "employee" : "department"}`,
+        createdById: userId,
+        employeeId: transUserLink,
+      },
+    });
+
+    const cat = item.categoryId
+      ? await tx.assetCategory.findUnique({ where: { id: item.categoryId } })
+      : null;
+    if (!cat) throw new Error("Asset category not linked or not found.");
+
+    const dept = item.purchasedFromDepartmentId
+      ? await tx.department.findUnique({ where: { id: item.purchasedFromDepartmentId } })
+      : null;
+
+    // Map InventoryLocation to physical Asset Location by name
+    let resolvedAssetLocationId: string | null = null;
+    const targetLocId = item.defaultLocationId || input.locationId;
+    if (targetLocId) {
+      const invLoc = await tx.inventoryLocation.findUnique({
+        where: { id: targetLocId }
+      });
+      if (invLoc) {
+        let loc = await tx.location.findFirst({
+          where: { companyId, name: invLoc.name }
+        });
+        if (!loc) {
+          loc = await tx.location.create({
+            data: {
+              companyId,
+              name: invLoc.name,
+              code: invLoc.code || null,
+              description: invLoc.description || `Auto-created matching location for inventory: ${invLoc.name}`,
+              isActive: true
+            }
+          });
+        }
+        resolvedAssetLocationId = loc.id;
+      }
+    }
+
+    const assets = [];
+    for (let i = 0; i < input.quantity; i++) {
+      const company = await tx.company.update({
+        where: { id: companyId },
+        data: { lastAssetSequence: { increment: 1 } },
+        select: { code: true, name: true, lastAssetSequence: true },
+      });
+
+      const genCtx = {
+        companyCode: company.code,
+        companyName: company.name,
+        purchasedFromCode: dept?.code,
+        purchasedFromName: dept?.name,
+        categoryCode: cat.code,
+        categoryName: cat.name,
+        sequence: company.lastAssetSequence,
+      };
+
+      const serialNum = input.serialNumbers?.[i] || item.serialNumber || null;
+      const pieceAssetCode = generateAssetCode(genCtx);
+      const pieceAssetTag = generateAssetTag(genCtx);
+
+      const targetStatus = input.employeeId ? AssetStatus.ASSIGNED : AssetStatus.ACTIVE;
+
+      const newAsset = await tx.asset.create({
+        data: {
+          companyId,
+          categoryId: item.categoryId!,
+          departmentId: item.departmentId || (input.departmentId ? input.departmentId : null),
+          purchasedFromDepartmentId: item.purchasedFromDepartmentId || null,
+          locationId: resolvedAssetLocationId,
+          vendorId: item.vendorId || null,
+          name: item.name,
+          brand: item.brand || null,
+          model: item.model || null,
+          serialNumber: serialNum,
+          cost: item.cost || null,
+          purchaseDate: item.purchaseDate ? new Date(item.purchaseDate) : null,
+          warranty: item.warranty || null,
+          warrantyExpiration: item.warrantyExpiration ? new Date(item.warrantyExpiration) : null,
+          specifications: item.specifications || null,
+          accessoriesIncluded: item.accessoriesIncluded || [],
+          estimatedReplacementValue: item.estimatedReplacementValue || null,
+          attachmentUrl: item.attachmentUrl || null,
+          imageUrl: item.imageUrl || null,
+          purchaseUrl: item.purchaseUrl || null,
+          assetCode: pieceAssetCode,
+          assetTag: pieceAssetTag,
+          status: targetStatus,
+          condition: item.condition || "New",
+          sourceInventoryItemId: item.id,
+          sourceInventoryAssignmentId: invAssignment.id,
+        },
+      });
+
+      assets.push(newAsset);
+
+      if (input.employeeId) {
+        await tx.assetAssignment.create({
+          data: {
+            companyId,
+            assetId: newAsset.id,
+            employeeId: input.employeeId,
+            userId: transUserLink,
+            assignedById: userId,
+            assignedAt: new Date(),
+            transactionId: `TXN-ASSIGN-${Date.now()}-${i}`,
+            notes: input.notes || `Created from inventory assignment: ${invAssignment.id}`,
+            physicalCondition: (input.physicalCondition as any) || "BRAND_NEW",
+            functionalStatus: (input.functionalStatus as any) || "WORKING",
+            termsAccepted: input.termsAccepted || false,
+            handoverDate: input.handoverDate ? new Date(input.handoverDate) : new Date(),
+            handoverType: (input.handoverType as any) || "NEW_HIRE",
+            managerUserId: input.managerUserId || null,
+            issuingOfficerName: input.issuingOfficerName || null,
+            employeeSignatureName: input.employeeSignatureName || null,
+            condition: item.condition || "New",
+          },
+        });
+      } else if (input.departmentId) {
+        await tx.assetAssignment.create({
+          data: {
+            companyId,
+            assetId: newAsset.id,
+            departmentId: input.departmentId,
+            assignedById: userId,
+            assignedAt: new Date(),
+            transactionId: `TXN-ASSIGN-DEPT-${Date.now()}-${i}`,
+            notes: input.notes || `Created from inventory assignment to department: ${invAssignment.id}`,
+            physicalCondition: (input.physicalCondition as any) || "BRAND_NEW",
+            functionalStatus: (input.functionalStatus as any) || "WORKING",
+            termsAccepted: false,
+            handoverDate: input.handoverDate ? new Date(input.handoverDate) : new Date(),
+            handoverType: (input.handoverType as any) || "NEW_HIRE",
+            condition: item.condition || "New",
+          },
+        });
+      }
+    }
+
+    return { item: updatedItem, balance: updatedBalance, transaction: txn, assignment: invAssignment, assets };
+  });
+
+  revalidatePath("/inventory");
+  revalidatePath(`/inventory/${input.itemId}`);
+  revalidatePath("/assets");
+  return result;
+}

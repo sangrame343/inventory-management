@@ -190,9 +190,9 @@ function TransferTable({ transfers, canAction }: { transfers: any[], canAction: 
                   {transfer.transferCode || "PENDING"}
                 </Link>
               </TableCell>
-              <TableCell>
-                <div className="flex flex-col">
-                  <span className="font-medium">{transfer.asset.name}</span>
+              <TableCell className="max-w-[200px] truncate" title={transfer.asset.name}>
+                <div className="flex flex-col min-w-0">
+                  <span className="font-medium truncate">{transfer.asset.name}</span>
                   <span className="text-xs text-muted-foreground">{transfer.asset.assetTag}</span>
                 </div>
               </TableCell>

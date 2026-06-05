@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AssetAssignModal } from "@/components/assets/asset-assign-modal";
 import { AssetReturnModal } from "@/components/assets/asset-return-modal";
 import { AssetDuplicateButton } from "@/components/assets/asset-duplicate-button";
+import { PrintAssetButton } from "@/components/assets/print-asset-button";
 import { format, differenceInDays, isPast, isWithinInterval, addDays, differenceInMonths, differenceInYears, addYears, addMonths } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -209,6 +210,7 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
       purchasedFromDepartment: true,
       location: true,
       vendor: true,
+      company: true,
       assignments: {
         include: {
           user: true,
@@ -233,7 +235,9 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
   const warrantyStatus = getWarrantyStatus(asset.warrantyExpiration);
 
   return (
-    <div className="space-y-6 pb-10">
+    <>
+      {/* ── Normal Screen View ── */}
+      <div className="space-y-6 pb-10 print:hidden">
 
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-card via-card to-muted/20 p-6">
@@ -314,6 +318,7 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
               <AssetAssignModal assetId={asset.id} assetName={asset.name} />
             )}
             <AssetDuplicateButton assetId={asset.id} />
+            <PrintAssetButton />
             <Button
               variant="outline"
               size="sm"
@@ -751,6 +756,123 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
           )}
         </div>
       </div>
-    </div>
+      </div>
+
+      {/* ── Print/Receipt View ── */}
+      <div className="hidden print:block bg-white text-black p-8 font-sans max-w-4xl mx-auto text-sm">
+        {/* Receipt Header */}
+        <div className="flex justify-between items-start border-b-2 border-gray-900 pb-6 mb-8">
+          <div>
+            <h1 className="text-2xl font-bold uppercase tracking-wide">{asset.company?.name || "Corporate Asset Management"}</h1>
+            <p className="text-xs text-gray-500 mt-1">Enterprise Asset Handover Registry</p>
+          </div>
+          <div className="text-right">
+            <h2 className="text-lg font-black tracking-tight text-gray-700">HANDOVER RECEIPT</h2>
+            <p className="text-xs font-mono text-gray-500 mt-1">TXN: {currentAssignment?.transactionId || "N/A"}</p>
+          </div>
+        </div>
+
+        {/* Declaration */}
+        <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+          <p className="font-semibold text-gray-800">Acknowledgement & Declaration</p>
+          <p className="text-xs text-gray-600 mt-1 leading-relaxed">
+            I hereby acknowledge receipt of the asset(s) listed below in good physical and working condition. 
+            I agree to comply with the organization&apos;s asset usage, maintenance, and security guidelines, 
+            and agree to return the asset upon termination of employment or request by management.
+          </p>
+        </div>
+
+        {/* Handover Details */}
+        <div className="grid grid-cols-2 gap-8 mb-8">
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 border-b border-gray-200 pb-1 mb-2.5">
+              Assigned Employee (Holder)
+            </h3>
+            <table className="w-full text-xs">
+              <tbody>
+                <tr className="border-b border-gray-100"><td className="py-1.5 font-medium text-gray-500 w-1/3">Full Name</td><td className="py-1.5 font-semibold text-gray-900">{currentAssignment?.employee?.fullName || currentAssignment?.user?.name || "N/A"}</td></tr>
+                <tr className="border-b border-gray-100"><td className="py-1.5 font-medium text-gray-500">Employee Code</td><td className="py-1.5 font-mono text-gray-900">{currentAssignment?.employee?.employeeCode || "N/A"}</td></tr>
+                <tr className="border-b border-gray-100"><td className="py-1.5 font-medium text-gray-500">Department</td><td className="py-1.5 text-gray-900">{currentAssignment?.department?.name || currentAssignment?.employee?.department?.name || "N/A"}</td></tr>
+                <tr className="border-b border-gray-100"><td className="py-1.5 font-medium text-gray-500">Designation</td><td className="py-1.5 text-gray-900">{currentAssignment?.employee?.designation || "N/A"}</td></tr>
+                <tr className="border-b border-gray-100"><td className="py-1.5 font-medium text-gray-500">Location</td><td className="py-1.5 text-gray-900">{currentAssignment?.location?.name || "N/A"}</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 border-b border-gray-200 pb-1 mb-2.5">
+              Handover Transaction Info
+            </h3>
+            <table className="w-full text-xs">
+              <tbody>
+                <tr className="border-b border-gray-100"><td className="py-1.5 font-medium text-gray-500 w-1/3">Handover Date</td><td className="py-1.5 font-semibold text-gray-900">{currentAssignment?.assignedAt ? format(new Date(currentAssignment.assignedAt), "PPP") : "N/A"}</td></tr>
+                <tr className="border-b border-gray-100"><td className="py-1.5 font-medium text-gray-500">Handover Type</td><td className="py-1.5 text-gray-900">{currentAssignment?.handoverType || "N/A"}</td></tr>
+                <tr className="border-b border-gray-100"><td className="py-1.5 font-medium text-gray-500">Issued By (Admin)</td><td className="py-1.5 text-gray-900">{currentAssignment?.assignedBy?.name || currentAssignment?.assignedBy?.email || "N/A"}</td></tr>
+                <tr className="border-b border-gray-100"><td className="py-1.5 font-medium text-gray-500">Condition</td><td className="py-1.5 text-gray-900">{currentAssignment?.physicalCondition || currentAssignment?.condition || "N/A"}</td></tr>
+                <tr className="border-b border-gray-100"><td className="py-1.5 font-medium text-gray-500">Functional Status</td><td className="py-1.5 text-gray-900">{currentAssignment?.functionalStatus || "WORKING"}</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Asset Details */}
+        <div className="mb-8">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 border-b border-gray-200 pb-1 mb-3">
+            Asset Inventory Details
+          </h3>
+          <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-xs">
+            <div className="flex border-b border-gray-100 py-1.5"><span className="font-medium text-gray-500 w-1/3">Asset Name</span><span className="font-semibold text-gray-900">{asset.name}</span></div>
+            <div className="flex border-b border-gray-100 py-1.5"><span className="font-medium text-gray-500 w-1/3">Asset Tag</span><span className="font-mono text-gray-900">{asset.assetTag}</span></div>
+            <div className="flex border-b border-gray-100 py-1.5"><span className="font-medium text-gray-500 w-1/3">Asset Code</span><span className="font-mono text-gray-900">{asset.assetCode || "N/A"}</span></div>
+            <div className="flex border-b border-gray-100 py-1.5"><span className="font-medium text-gray-500 w-1/3">Category</span><span className="text-gray-900">{asset.category?.name || "N/A"}</span></div>
+            <div className="flex border-b border-gray-100 py-1.5"><span className="font-medium text-gray-500 w-1/3">Brand / Model</span><span className="text-gray-900">{asset.brand || "—"} {asset.model ? `/ ${asset.model}` : ""}</span></div>
+            <div className="flex border-b border-gray-100 py-1.5"><span className="font-medium text-gray-500 w-1/3">Serial Number</span><span className="font-mono text-gray-900">{asset.serialNumber || "N/A"}</span></div>
+          </div>
+        </div>
+
+        {/* Specifications & Notes */}
+        {(asset.specifications || currentAssignment?.notes) && (
+          <div className="mb-10 grid grid-cols-2 gap-8">
+            {asset.specifications && (
+              <div>
+                <h4 className="text-xs font-bold text-gray-500 uppercase mb-1">Specifications</h4>
+                <p className="text-xs text-gray-700 bg-gray-50 p-2.5 rounded border border-gray-150 whitespace-pre-wrap">{asset.specifications}</p>
+              </div>
+            )}
+            {currentAssignment?.notes && (
+              <div>
+                <h4 className="text-xs font-bold text-gray-500 uppercase mb-1">Handover Notes</h4>
+                <p className="text-xs text-gray-700 bg-gray-50 p-2.5 rounded border border-gray-150 whitespace-pre-wrap">{currentAssignment.notes}</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Signatures */}
+        <div className="mt-16 pt-10 border-t border-gray-200 grid grid-cols-2 gap-16">
+          <div className="text-center">
+            <div className="h-16 flex items-end justify-center mb-2">
+              <span className="text-xs text-gray-400 font-mono italic">[Signature or Digital Acceptance]</span>
+            </div>
+            <div className="border-t border-gray-400 w-4/5 mx-auto pt-2">
+              <p className="text-xs font-bold text-gray-800">Signature of Employee</p>
+              <p className="text-[10px] text-gray-500 mt-0.5">Name: {currentAssignment?.employee?.fullName || currentAssignment?.user?.name || "____________________"}</p>
+              <p className="text-[10px] text-gray-500">Date: ____________________</p>
+            </div>
+          </div>
+
+          <div className="text-center">
+            <div className="h-16 flex items-end justify-center mb-2">
+              <span className="text-xs text-gray-400 font-mono italic">[Authorized Stamp / Signature]</span>
+            </div>
+            <div className="border-t border-gray-400 w-4/5 mx-auto pt-2">
+              <p className="text-xs font-bold text-gray-800">Signature of Issuing Officer</p>
+              <p className="text-[10px] text-gray-500 mt-0.5">Name: {currentAssignment?.assignedBy?.name || "____________________"}</p>
+              <p className="text-[10px] text-gray-500">Date: ____________________</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }

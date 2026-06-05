@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Calendar } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -67,7 +68,7 @@ export function ScheduleForm({ assets }: ScheduleFormProps) {
       router.refresh();
     },
     onError: (err: any) => {
-      alert(err.message);
+      toast.error(err.message);
     },
   });
 

@@ -6,6 +6,7 @@ import {
   Prisma
 } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import { generateAssetCode, generateAssetTag } from "@/lib/asset-utils";
 
 export type ApprovalHandler = (tx: Prisma.TransactionClient, request: any) => Promise<any>;
 
@@ -13,6 +14,73 @@ export class ApprovalService {
   // Handler map for actual operations upon approval
   private static handlers: Record<string, ApprovalHandler> = {
     "ASSET_CREATE": async (tx, request) => {
+      if (request.payload?.isDuplicate && request.payload?.originalId) {
+        const original = await tx.asset.findUnique({
+          where: { id: request.payload.originalId, companyId: request.companyId },
+          include: {
+            category: true,
+            purchasedFromDepartment: true,
+          },
+        });
+        if (!original) {
+          throw new Error("Original asset not found for duplication");
+        }
+
+        // 1. Increment sequence
+        const company = await tx.company.update({
+          where: { id: request.companyId },
+          data: { lastAssetSequence: { increment: 1 } },
+          select: { code: true, name: true, lastAssetSequence: true },
+        });
+
+        // 2. Generate new codes
+        const genCtx = {
+          companyCode: company.code,
+          companyName: company.name,
+          purchasedFromCode: original.purchasedFromDepartment?.code,
+          purchasedFromName: original.purchasedFromDepartment?.name,
+          categoryCode: original.category.code,
+          categoryName: original.category.name,
+          sequence: company.lastAssetSequence,
+        };
+
+        const newAssetCode = generateAssetCode(genCtx);
+        const newAssetTag = generateAssetTag(genCtx);
+
+        // 3. Create duplicate
+        return tx.asset.create({
+          data: {
+            companyId: request.companyId,
+            categoryId: original.categoryId,
+            departmentId: original.departmentId,
+            locationId: original.locationId,
+            vendorId: original.vendorId,
+            purchasedFromDepartmentId: original.purchasedFromDepartmentId,
+            
+            name: `${original.name} (Copy)`,
+            assetCode: newAssetCode,
+            assetTag: newAssetTag,
+            serialNumber: null, // Don't copy serial number
+            brand: original.brand,
+            model: original.model,
+            
+            status: "ACTIVE", // Reset status to ACTIVE
+            condition: original.condition,
+            specifications: original.specifications,
+            accessoriesIncluded: original.accessoriesIncluded,
+            estimatedReplacementValue: original.estimatedReplacementValue,
+            cost: original.cost,
+            usefulLife: original.usefulLife,
+            residualValue: original.residualValue,
+            warranty: original.warranty,
+            warrantyExpiration: original.warrantyExpiration,
+            imageUrl: original.imageUrl,
+            purchaseUrl: original.purchaseUrl,
+            purchaseDate: original.purchaseDate,
+          },
+        });
+      }
+
       return tx.asset.create({ 
         data: {
             ...request.payload,

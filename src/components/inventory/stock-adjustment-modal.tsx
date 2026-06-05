@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { adjustStock } from "@/app/actions/inventory-transaction-actions";
 
+import { toast } from "sonner";
 import type { InventoryLocation, InventoryItem, InventoryBalance } from "@prisma/client";
 
 type PopulatedItem = InventoryItem & {
@@ -50,7 +51,10 @@ export function StockAdjustmentModal({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!locationId || !reason) return alert("Location and Reason required");
+    if (!locationId || !reason) {
+      toast.warning("Location and Reason required");
+      return;
+    }
     
     setLoading(true);
     try {
@@ -61,9 +65,10 @@ export function StockAdjustmentModal({
         reason,
         notes,
       });
+      toast.success("Stock adjusted successfully");
       onOpenChange(false);
     } catch (err: any) {
-      alert(err.message || "Adjustment failed");
+      toast.error(err.message || "Adjustment failed");
     } finally {
       setLoading(false);
     }

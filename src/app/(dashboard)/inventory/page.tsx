@@ -33,14 +33,19 @@ export default async function InventoryPage() {
   ]);
 
   return (
-    <div className="flex-1 space-y-4 p-8 pt-6">
-      <div className="flex items-center justify-between space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">Inventory</h2>
+    <div className="flex-1 space-y-6 p-8 pt-6">
+      <div className="flex flex-col space-y-1.5 pb-4 border-b border-muted/30">
+        <h2 className="text-4xl font-extrabold tracking-tight bg-gradient-to-r from-primary via-indigo-600 to-violet-500 bg-clip-text text-transparent">
+          Inventory Control
+        </h2>
+        <p className="text-sm text-muted-foreground font-medium">
+          Track quantity-based stock levels, assign inventory units to departments or employees, and auto-provision assets.
+        </p>
       </div>
       
       <InventoryDashboard
         initialItems={items}
-        categories={categories}
+        categories={assetCategories.map(c => ({ id: c.id, name: c.name }))}
         locations={locations}
         units={units}
         employees={employees.map(e => ({ 

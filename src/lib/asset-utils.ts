@@ -22,7 +22,7 @@ function sanitize(text: string | null | undefined, length: number = 3): string {
 }
 
 function formatSequence(seq: number): string {
-  return seq.toString().padStart(3, "0");
+  return seq.toString();
 }
 
 export function generateAssetCode(ctx: AssetCodeGenContext): string {

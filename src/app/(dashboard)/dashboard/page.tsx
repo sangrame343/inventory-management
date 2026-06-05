@@ -9,6 +9,7 @@ import { DashboardGrid } from "@/components/dashboard/dashboard-grid";
 import { DashboardCharts } from "@/components/dashboard/dashboard-charts";
 import { ActivityFeed } from "@/components/dashboard/activity-feed";
 import { UpcomingMaintenanceCard } from "@/components/dashboard/upcoming-maintenance-card";
+import { WarrantyAlertsCard } from "@/components/dashboard/warranty-alerts-card";
 import { QuickActions } from "@/components/dashboard/quick-actions";
 import { Building2, Sparkles } from "lucide-react";
 
@@ -88,7 +89,7 @@ export default async function DashboardPage() {
       <DashboardGrid stats={stats} />
 
       {/* ── Charts + Activity + Side Widgets ── */}
-      <div className="grid gap-6 lg:grid-cols-7 lg:items-stretch">
+      <div className="grid gap-6 lg:grid-cols-7 lg:items-start">
         {/* Left: Charts + Activity */}
         <div className="lg:col-span-4 space-y-6">
           <DashboardCharts
@@ -98,12 +99,11 @@ export default async function DashboardPage() {
           <ActivityFeed activities={activity} />
         </div>
 
-        {/* Right: Quick Actions + Maintenance */}
-        <div className="lg:col-span-3 h-full flex flex-col gap-6">
+        {/* Right: Warranties + Quick Actions + Maintenance */}
+        <div className="lg:col-span-3 flex flex-col gap-6">
+          <WarrantyAlertsCard warranties={stats.warranties} />
           <QuickActions role={userRole} />
-          <div className="flex-1">
-            <UpcomingMaintenanceCard schedules={stats.upcomingSchedules} />
-          </div>
+          <UpcomingMaintenanceCard schedules={stats.upcomingSchedules} />
         </div>
       </div>
     </div>

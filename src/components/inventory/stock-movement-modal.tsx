@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { addStockTransaction } from "@/app/actions/inventory-transaction-actions";
 
+import { toast } from "sonner";
 import type { InventoryLocation, InventoryItem, MovementType, MovementDirection } from "@prisma/client";
 
 export function StockMovementModal({
@@ -45,7 +46,10 @@ export function StockMovementModal({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!locationId || !movementType || Number(quantity) <= 0) return alert("Invalid inputs");
+    if (!locationId || !movementType || Number(quantity) <= 0) {
+      toast.warning("Invalid inputs");
+      return;
+    }
     
     setLoading(true);
     try {
@@ -58,9 +62,10 @@ export function StockMovementModal({
         unitCost: unitCost ? Number(unitCost) : undefined,
         notes,
       });
+      toast.success("Stock transaction completed successfully");
       onOpenChange(false);
     } catch (err: any) {
-      alert(err.message || "Transaction failed");
+      toast.error(err.message || "Transaction failed");
     } finally {
       setLoading(false);
     }

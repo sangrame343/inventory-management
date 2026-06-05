@@ -339,6 +339,9 @@ export async function duplicateAsset(id: string) {
         residualValue: original.residualValue,
         warranty: original.warranty,
         warrantyExpiration: original.warrantyExpiration,
+        imageUrl: original.imageUrl,
+        purchaseUrl: original.purchaseUrl,
+        purchaseDate: original.purchaseDate,
       },
     });
 
@@ -364,7 +367,7 @@ export async function duplicateAsset(id: string) {
   return JSON.parse(JSON.stringify(res));
 }
 
-export async function getExportAssetsData() {
+export async function getExportAssetsData(format: "friendly" | "all" = "friendly") {
   const { companyId } = await getSessionContext();
 
   const assets = await db.asset.findMany({
@@ -377,7 +380,7 @@ export async function getExportAssetsData() {
       vendor: true,
       assignments: {
         where: { returnedAt: null },
-        include: { employee: true, user: true },
+        include: { employee: true, user: true, department: true },
         orderBy: { assignedAt: "desc" },
         take: 1,
       },
@@ -387,34 +390,52 @@ export async function getExportAssetsData() {
 
   return assets.map((asset) => {
     const assignment = asset.assignments[0];
-    const assignedTo = assignment
-      ? (assignment.employee?.fullName || assignment.user?.name || assignment.user?.email || "N/A")
-      : "Unassigned";
 
-    return {
-      "Asset Code": asset.assetCode || "—",
-      "Asset Tag ID": asset.assetTag,
-      "Name / Model": asset.name,
-      "Category": asset.category?.name || "N/A",
+    const baseData = {
+      "Company Asset Tag ID": asset.assetTag,
+      "Asset Name / Model": asset.name,
+      "Asset Category": asset.category?.name || "",
+      "Asset Code": asset.assetCode || "",
+      "Asset Department / Team": asset.department?.name || "",
+      "Purchased From Company": asset.purchasedFromDepartment?.name || "",
+      "Location": asset.location?.name || "",
+      "Vendor": asset.vendor?.name || "",
+      "Serial Number / Service Tag": asset.serialNumber || "",
+      "Brand": asset.brand || "",
+      "Model": asset.model || "",
       "Status": asset.status,
-      "Condition": asset.condition || "N/A",
-      "Brand": asset.brand || "—",
-      "Model": asset.model || "—",
-      "Serial Number": asset.serialNumber || "—",
-      "Specifications": asset.specifications || "—",
-      "Accessories": asset.accessoriesIncluded.join(", ") || "—",
-      "Department": asset.department?.name || "N/A",
-      "Purchased From Company": asset.purchasedFromDepartment?.name || "—",
-      "Location": asset.location?.name || "N/A",
-      "Vendor": asset.vendor?.name || "N/A",
-      "Price (INR)": asset.cost || 0,
+      "General Condition": asset.condition || "",
+      "Purchase Date": asset.purchaseDate ? new Date(asset.purchaseDate).toISOString().slice(0, 10) : "",
+      "Asset Price (INR)": asset.cost || 0,
       "Replacement Value": asset.estimatedReplacementValue || 0,
-      "Purchase Date": asset.purchaseDate ? new Date(asset.purchaseDate).toLocaleDateString() : "—",
-      "Warranty Details": asset.warranty || "—",
-      "Warranty Expiration": asset.warrantyExpiration ? new Date(asset.warrantyExpiration).toLocaleDateString() : "—",
-      "Assigned To": assignedTo,
-      "Assigned Date": assignment ? new Date(assignment.assignedAt).toLocaleDateString() : "—",
+      "Warranty Details": asset.warranty || "",
+      "Warranty Expiration": asset.warrantyExpiration ? new Date(asset.warrantyExpiration).toISOString().slice(0, 10) : "",
+      "Specifications": asset.specifications || "",
+      "Accessories Included": asset.accessoriesIncluded.join(", ") || "",
+      "Photos / Attachments URL": asset.attachmentUrl || "",
+      "Handover Date": assignment?.handoverDate ? new Date(assignment.handoverDate).toISOString().slice(0, 10) : (assignment ? new Date(assignment.assignedAt).toISOString().slice(0, 10) : ""),
+      "Handover Type": assignment?.handoverType || "",
+      "Assigned To Employee (ID or Email)": assignment?.employee?.employeeCode || assignment?.employee?.email || assignment?.user?.email || "",
+      "Assigned To Department": assignment?.department?.name || "",
+      "Physical Condition": assignment?.physicalCondition || "",
+      "Functional Status": assignment?.functionalStatus || "",
+      "Handover Notes": assignment?.notes || "",
     };
+
+    if (format === "all") {
+      return {
+        "Database ID": asset.id,
+        ...baseData,
+        "Product Image URL": asset.imageUrl || "",
+        "Purchase Link URL": asset.purchaseUrl || "",
+        "Estimated Useful Life (Years)": asset.usefulLife || "",
+        "Estimated Residual Value": asset.residualValue || "",
+        "Created At": new Date(asset.createdAt).toLocaleString(),
+        "Updated At": new Date(asset.updatedAt).toLocaleString(),
+      };
+    }
+
+    return baseData;
   });
 }
 

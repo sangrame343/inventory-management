@@ -298,13 +298,13 @@ export async function importAssets(formData: FormData): Promise<{ success: boole
       }
     }
 
-    if (assetsToInsert.length > 0) {
+      if (assetsToInsert.length > 0) {
       try {
          await db.$transaction(async (tx) => {
              // 1. Generate code and tag if needed
              let lastAssetSequence = company.lastAssetSequence;
              for (const asset of assetsToInsert) {
-                 if (settings?.autoGenerateAssetCode && (!asset.assetCode || !asset.assetTag)) {
+                 if (!asset.assetCode || !asset.assetTag) {
                      lastAssetSequence++;
                      const cat = categories.find(c => c.id === asset.categoryId);
                      const dept = departments.find(d => d.id === asset.purchasedFromDepartmentId);

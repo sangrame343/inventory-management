@@ -135,37 +135,39 @@ export function UsersClient({ users, companies = [] }: { users: any[]; companies
            <Dialog open={editOpen} onOpenChange={(open) => { setEditOpen(open); setErrorMsg(""); }}>
              <DialogTrigger render={<Button variant="outline" size="sm">Edit</Button>} />
              <DialogContent>
-               <DialogHeader>
-                 <DialogTitle>Edit User</DialogTitle>
-                 <DialogDescription>
-                   Update basic information for {user.name}. If you provide a password, it will override the user's current password.
-                 </DialogDescription>
-               </DialogHeader>
-               {errorMsg && <div className="text-sm font-medium text-destructive">{errorMsg}</div>}
-               <div className="space-y-4 py-2">
-                 <div className="space-y-2">
-                   <Label>Name</Label>
-                   <Input value={editName} onChange={e => setEditName(e.target.value)} />
+               <form onSubmit={(e) => { e.preventDefault(); handleEdit(); }}>
+                 <DialogHeader>
+                   <DialogTitle>Edit User</DialogTitle>
+                   <DialogDescription>
+                     Update basic information for {user.name}. If you provide a password, it will override the user's current password.
+                   </DialogDescription>
+                 </DialogHeader>
+                 {errorMsg && <div className="text-sm font-medium text-destructive mb-4">{errorMsg}</div>}
+                 <div className="space-y-4 py-2 mb-4">
+                   <div className="space-y-2">
+                     <Label>Name</Label>
+                     <Input value={editName} onChange={e => setEditName(e.target.value)} autoComplete="name" />
+                   </div>
+                   <div className="space-y-2">
+                     <Label>Email</Label>
+                     <Input value={editEmail} onChange={e => setEditEmail(e.target.value)} type="email" autoComplete="email" />
+                   </div>
+                   <div className="space-y-2">
+                     <Label>Mobile</Label>
+                     <Input value={editMobile} onChange={e => setEditMobile(e.target.value)} autoComplete="tel" />
+                   </div>
+                   <div className="space-y-2">
+                     <Label>New Password (Optional)</Label>
+                     <Input value={editPassword} onChange={e => setEditPassword(e.target.value)} type="password" placeholder="Leave empty to remain unchanged" autoComplete="new-password" />
+                   </div>
                  </div>
-                 <div className="space-y-2">
-                   <Label>Email</Label>
-                   <Input value={editEmail} onChange={e => setEditEmail(e.target.value)} type="email" />
-                 </div>
-                 <div className="space-y-2">
-                   <Label>Mobile</Label>
-                   <Input value={editMobile} onChange={e => setEditMobile(e.target.value)} />
-                 </div>
-                 <div className="space-y-2">
-                   <Label>New Password (Optional)</Label>
-                   <Input value={editPassword} onChange={e => setEditPassword(e.target.value)} type="password" placeholder="Leave empty to remain unchanged" />
-                 </div>
-               </div>
-               <DialogFooter>
-                 <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
-                 <Button onClick={handleEdit} disabled={loadingAction === `edit-${user.id}`}>
-                    {loadingAction === `edit-${user.id}` ? "Saving..." : "Save Changes"}
-                 </Button>
-               </DialogFooter>
+                 <DialogFooter>
+                   <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
+                   <Button type="submit" disabled={loadingAction === `edit-${user.id}`}>
+                      {loadingAction === `edit-${user.id}` ? "Saving..." : "Save Changes"}
+                   </Button>
+                 </DialogFooter>
+               </form>
              </DialogContent>
            </Dialog>
 
@@ -183,13 +185,13 @@ export function UsersClient({ users, companies = [] }: { users: any[]; companies
                  <Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancel</Button>
                  <Button variant="destructive" onClick={handleDelete} disabled={loadingAction === `delete-${user.id}`}>
                     {loadingAction === `delete-${user.id}` ? "Deleting..." : "Confirm Delete"}
-                 </Button>
-               </DialogFooter>
-             </DialogContent>
-           </Dialog>
-        </TableCell>
-      </TableRow>
-    );
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+         </TableCell>
+       </TableRow>
+     );
   };
 
   const filtered = users.filter((u: any) => 
@@ -205,72 +207,77 @@ export function UsersClient({ users, companies = [] }: { users: any[]; companies
           className="border rounded px-3 py-2 w-full max-w-sm"
           value={filterStr}
           onChange={(e) => setFilterStr(e.target.value)}
+          autoComplete="off"
+          name="search"
+          type="search"
         />
 
         <Dialog open={addOpen} onOpenChange={(open) => { setAddOpen(open); setErrorMsg(""); }}>
           <DialogTrigger render={<Button className="flex items-center gap-1.5"><Plus size={16} /> Add User</Button>} />
           <DialogContent className="sm:max-w-[450px]">
-            <DialogHeader>
-              <DialogTitle>Add User</DialogTitle>
-              <DialogDescription>
-                Create a new active user and assign them to a company and role immediately.
-              </DialogDescription>
-            </DialogHeader>
-            {errorMsg && <div className="text-sm font-medium text-destructive">{errorMsg}</div>}
-            <div className="space-y-4 py-2">
-              <div className="space-y-2">
-                <Label>Name</Label>
-                <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Full Name" />
+            <form onSubmit={(e) => { e.preventDefault(); handleAdd(); }}>
+              <DialogHeader>
+                <DialogTitle>Add User</DialogTitle>
+                <DialogDescription>
+                  Create a new active user and assign them to a company and role immediately.
+                </DialogDescription>
+              </DialogHeader>
+              {errorMsg && <div className="text-sm font-medium text-destructive mb-4">{errorMsg}</div>}
+              <div className="space-y-4 py-2 mb-4">
+                <div className="space-y-2">
+                  <Label>Name</Label>
+                  <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Full Name" autoComplete="name" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Email</Label>
+                  <Input value={newEmail} onChange={e => setNewEmail(e.target.value)} type="email" placeholder="email@example.com" autoComplete="email" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Mobile</Label>
+                  <Input value={newMobile} onChange={e => setNewMobile(e.target.value)} placeholder="Phone number" autoComplete="tel" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Password</Label>
+                  <Input value={newPassword} onChange={e => setNewPassword(e.target.value)} type="password" placeholder="Password" autoComplete="new-password" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Company Assignment</Label>
+                  <Select value={newCompanyId} onValueChange={(val) => setNewCompanyId(val || "")}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Company">
+                        {companies.find(c => c.id === newCompanyId)?.name}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {companies.map((company) => (
+                        <SelectItem key={company.id} value={company.id}>
+                          {company.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Role</Label>
+                  <Select value={newRole} onValueChange={(val) => setNewRole(val || "USER")}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="SUPER_ADMIN">SUPER_ADMIN</SelectItem>
+                      <SelectItem value="ADMIN">ADMIN</SelectItem>
+                      <SelectItem value="USER">USER</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>Email</Label>
-                <Input value={newEmail} onChange={e => setNewEmail(e.target.value)} type="email" placeholder="email@example.com" />
-              </div>
-              <div className="space-y-2">
-                <Label>Mobile</Label>
-                <Input value={newMobile} onChange={e => setNewMobile(e.target.value)} placeholder="Phone number" />
-              </div>
-              <div className="space-y-2">
-                <Label>Password</Label>
-                <Input value={newPassword} onChange={e => setNewPassword(e.target.value)} type="password" placeholder="Password" />
-              </div>
-              <div className="space-y-2">
-                <Label>Company Assignment</Label>
-                <Select value={newCompanyId} onValueChange={(val) => setNewCompanyId(val || "")}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Company">
-                      {companies.find(c => c.id === newCompanyId)?.name}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {companies.map((company) => (
-                      <SelectItem key={company.id} value={company.id}>
-                        {company.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Role</Label>
-                <Select value={newRole} onValueChange={(val) => setNewRole(val || "USER")}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="SUPER_ADMIN">SUPER_ADMIN</SelectItem>
-                    <SelectItem value="ADMIN">ADMIN</SelectItem>
-                    <SelectItem value="USER">USER</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
-              <Button onClick={handleAdd} disabled={loadingAction === "add" || !newName || !newEmail || !newPassword || !newCompanyId}>
-                {loadingAction === "add" ? "Adding..." : "Add User"}
-              </Button>
-            </DialogFooter>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
+                <Button type="submit" disabled={loadingAction === "add" || !newName || !newEmail || !newPassword || !newCompanyId}>
+                  {loadingAction === "add" ? "Adding..." : "Add User"}
+                </Button>
+              </DialogFooter>
+            </form>
           </DialogContent>
         </Dialog>
       </div>

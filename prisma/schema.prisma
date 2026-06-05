@@ -141,9 +141,11 @@ enum MaintenanceType {
 
 enum InventoryItemType {
   CONSUMABLE
-  SPARE
+  IT_ASSETS
   TOOL
+  FIXED_ASSETS
   OTHER
+  ELECTRONICS_ITEMS
 }
 
 enum InventoryItemStatus {
@@ -314,6 +316,10 @@ model Department {
   employees       Employee[]
   assignments     AssetAssignment[]
 
+  purchasedInventoryItems InventoryItem[]   @relation("inventoryPurchasedFrom")
+  ownerInventoryItems     InventoryItem[]   @relation("inventoryOwner")
+  inventoryAssignments   InventoryAssignment[]
+
   @@unique([companyId, name])
   @@unique([companyId, code])
   @@index([companyId])
@@ -365,6 +371,7 @@ model AssetCategory {
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
   assets  Asset[]
+  inventoryItems InventoryItem[]
 
   @@unique([companyId, name])
   @@unique([companyId, code])
@@ -379,6 +386,8 @@ model Asset {
   locationId   String?
   vendorId     String?
   purchasedFromDepartmentId String?
+  sourceInventoryItemId        String?
+  sourceInventoryAssignmentId  String?
 
   name         String
   assetCode    String?
@@ -414,6 +423,9 @@ model Asset {
   purchasedFromDepartment Department? @relation("purchasedFrom", fields: [purchasedFromDepartmentId], references: [id])
   location   Location?     @relation(fields: [locationId], references: [id])
   vendor     Vendor?       @relation(fields: [vendorId], references: [id])
+
+  sourceInventoryItem          InventoryItem?        @relation("inventoryItemAssets", fields: [sourceInventoryItemId], references: [id])
+  sourceInventoryAssignment    InventoryAssignment?  @relation(fields: [sourceInventoryAssignmentId], references: [id])
 
   assignments          AssetAssignment[]
   tickets              MaintenanceTicket[]
@@ -610,6 +622,8 @@ model Employee {
   transfersFrom AssetTransfer[] @relation("transferFromEmployee")
   transfersTo   AssetTransfer[] @relation("transferToEmployee")
 
+  inventoryAssignments InventoryAssignment[]
+
   @@unique([companyId, employeeCode])
   @@index([companyId])
 }
@@ -636,6 +650,8 @@ model Vendor {
   company Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
   assets  Asset[]
   tickets MaintenanceTicket[]
+
+  inventoryItems InventoryItem[]
 
   @@unique([companyId, name])
   @@index([companyId])
@@ -707,7 +723,6 @@ model InventoryCategory {
   updatedAt   DateTime @updatedAt
 
   company Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  items   InventoryItem[]
 
   @@unique([companyId, name])
   @@index([companyId])
@@ -768,28 +783,79 @@ model InventoryItem {
   isSerialTracked Boolean @default(false)
   isBatchTracked  Boolean @default(false)
 
+  // Asset-like stock fields
+  totalQuantity              Int       @default(0)
+  availableQuantity          Int       @default(0)
+  assignedQuantity           Int       @default(0)
+  brand                      String?
+  model                      String?
+  serialNumber               String?
+  vendorId                   String?
+  purchasedFromDepartmentId  String?
+  departmentId               String? // Owner Department
+  purchaseDate               DateTime?
+  cost                       Float?
+  warranty                   String?
+  warrantyExpiration         DateTime?
+  condition                  String?
+  imageUrl                   String?
+  purchaseUrl                String?
+  specifications             String?
+  accessoriesIncluded        String[]  @default([])
+  estimatedReplacementValue  Float?
+  attachmentUrl              String?
+
   createdById String?
   updatedById String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   company         Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  category        InventoryCategory? @relation(fields: [categoryId], references: [id])
+  category        AssetCategory?     @relation(fields: [categoryId], references: [id])
   unit            UnitOfMeasure?     @relation(fields: [unitId], references: [id])
   defaultLocation InventoryLocation? @relation(fields: [defaultLocationId], references: [id])
 
   createdBy User? @relation("itemCreator", fields: [createdById], references: [id])
   updatedBy User? @relation("itemUpdater", fields: [updatedById], references: [id])
 
+  vendor                    Vendor?     @relation(fields: [vendorId], references: [id])
+  purchasedFromDepartment   Department? @relation("inventoryPurchasedFrom", fields: [purchasedFromDepartmentId], references: [id])
+  department                Department? @relation("inventoryOwner", fields: [departmentId], references: [id])
+
   balances     InventoryBalance[]
   transactions InventoryTransaction[]
   adjustments  InventoryAdjustment[]
+  assets       Asset[]               @relation("inventoryItemAssets")
+  inventoryAssignments InventoryAssignment[]
 
   @@unique([companyId, sku])
   @@index([companyId])
   @@index([categoryId])
   @@index([status])
   @@index([itemType])
+}
+
+model InventoryAssignment {
+  id                 String   @id @default(cuid())
+  inventoryItemId    String
+  employeeId         String?
+  departmentId       String?
+  quantity           Int
+  assignedAt         DateTime @default(now())
+
+  handoverType       String?
+  physicalCondition  String?
+  functionalStatus   String?
+  notes              String?
+
+  createdById        String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  inventoryItem      InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  employee           Employee?     @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  department         Department?   @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  assets             Asset[]
 }
 
 model InventoryTransaction {

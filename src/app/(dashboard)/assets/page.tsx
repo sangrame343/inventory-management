@@ -37,7 +37,7 @@ export default async function AssetsPage(props: {
   const page = Number(searchParams.page) || 1;
   const limit = Number(searchParams.limit) || 10;
   const query = searchParams.query || "";
-  const sortBy = searchParams.sortBy || "createdAt";
+  const sortBy = searchParams.sortBy || "purchaseDate";
   const order = (searchParams.order as Prisma.SortOrder) || "desc";
   const skip = (page - 1) * limit;
 
@@ -160,7 +160,7 @@ export default async function AssetsPage(props: {
   } else if (sortBy === "status") {
     orderBy = { status: order };
   } else if (sortBy === "purchaseDate") {
-    orderBy = { purchaseDate: order };
+    orderBy = { purchaseDate: { sort: order, nulls: "last" } };
   } else if (sortBy === "category") {
     orderBy = { category: { name: order } };
   } else if (sortBy === "location") {
@@ -169,6 +169,8 @@ export default async function AssetsPage(props: {
     orderBy = { vendor: { name: order } };
   } else if (sortBy === "purchasedFromDepartment") {
     orderBy = { purchasedFromDepartment: { name: order } };
+  } else if (sortBy === "cost") {
+    orderBy = { cost: { sort: order, nulls: "last" } };
   }
 
   const [totalCount, categories, departments, locations, vendors, employees, settings] =
@@ -263,7 +265,7 @@ export default async function AssetsPage(props: {
         vendor: true,
         assignments: {
           where: { returnedAt: null },
-          include: { user: true, employee: true, assignedBy: true },
+          include: { user: true, employee: true, assignedBy: true, department: true },
           orderBy: { assignedAt: "desc" },
           take: 1,
         },
@@ -283,7 +285,7 @@ export default async function AssetsPage(props: {
         vendor: true,
         assignments: {
           where: { returnedAt: null },
-          include: { user: true, employee: true, assignedBy: true },
+          include: { user: true, employee: true, assignedBy: true, department: true },
           orderBy: { assignedAt: "desc" },
           take: 1,
         },
@@ -295,18 +297,22 @@ export default async function AssetsPage(props: {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">
-            Assets Fixed Registry
-          </h2>
-          <p className="text-sm text-muted-foreground">
+    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+      {/* Page header */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between pb-2">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2.5">
+            <div className="h-6 w-1 rounded-full bg-gradient-to-b from-primary to-primary/30" />
+            <h2 className="text-xl md:text-2xl font-bold tracking-tight text-foreground/90">
+              Assets Fixed Registry
+            </h2>
+          </div>
+          <p className="text-xs md:text-sm text-muted-foreground pl-[18px]">
             Manage company assets, assignments, and lifecycle tracking.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <AssetImportButton />
           <AssetExportButton />
           <AddAssetModal
@@ -325,6 +331,8 @@ export default async function AssetsPage(props: {
           />
         </div>
       </div>
+
+      <div className="h-px bg-gradient-to-r from-border via-border/50 to-transparent" />
 
       <AssetTableClient
         assets={JSON.parse(JSON.stringify(assets))}

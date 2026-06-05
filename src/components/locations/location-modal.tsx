@@ -130,129 +130,129 @@ export function LocationModal({ isOpen, onClose, location, parentId, onSuccess }
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[95vh] overflow-y-auto rounded-[2rem] border-none shadow-2xl">
-        <DialogHeader className="pb-4 border-b border-border/50">
+      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto rounded-xl border border-border/40 shadow-xl p-5">
+        <DialogHeader className="pb-3 border-b border-border/30">
           <div className="flex items-center gap-3">
-             <div className="p-2 bg-primary/10 rounded-xl text-primary">
-                <MapPin size={22} className="stroke-[2.5]" />
+             <div className="p-1.5 bg-primary/5 rounded-lg text-primary border border-primary/10">
+                <MapPin size={16} />
              </div>
              <div>
-                <DialogTitle className="text-2xl font-black uppercase tracking-tight italic">
-                  {location ? "Modify Physical Site" : "New Organization Location"}
+                <DialogTitle className="text-base font-bold text-foreground/80">
+                  {location ? "Edit Location" : "Add Location"}
                 </DialogTitle>
-                <DialogDescription className="font-bold text-muted-foreground uppercase text-[10px] tracking-widest mt-1">
-                   {location ? `Editing registry entry for ${location.name}` : "Create a new node in your company's physical hierarchy."}
+                <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                   {location ? `Update details for location: ${location.name}` : "Create a new branch node in your organizational hierarchy."}
                 </DialogDescription>
              </div>
           </div>
         </DialogHeader>
 
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 py-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5 py-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Primary Details */}
-            <div className="space-y-6 md:col-span-2">
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-1">Location Name</Label>
+            <div className="space-y-4 md:col-span-2">
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80 ml-1">Location Name</Label>
                 <Input 
                   {...form.register("name")} 
                   placeholder="e.g. Headquarters, Floor 1, Server Room" 
-                  className="h-14 rounded-2xl bg-muted/40 border-none shadow-inner font-black text-lg focus-visible:ring-primary/50 transition-all"
+                  className="h-10 rounded-lg border border-border/60 bg-background text-sm focus-visible:ring-primary/10 focus-visible:border-primary/40 transition-all shadow-3xs font-medium"
                 />
-                {form.formState.errors.name && <p className="text-[10px] font-bold text-destructive ml-1">{form.formState.errors.name.message}</p>}
+                {form.formState.errors.name && <p className="text-[10px] font-semibold text-destructive ml-1">{form.formState.errors.name.message}</p>}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-1">Internal Code (Optional)</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80 ml-1">Internal Code (Optional)</Label>
                   <Input 
                     {...form.register("code")} 
                     placeholder="e.g. HQ-01" 
-                    className="h-12 rounded-xl bg-muted/30 border-none shadow-inner font-mono font-bold"
+                    className="h-9.5 rounded-lg border border-border/60 bg-background text-xs font-mono font-medium focus-visible:ring-primary/10 focus-visible:border-primary/40 transition-all shadow-3xs"
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-1">Parent Hierarchy</Label>
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80 ml-1">Parent Hierarchy</Label>
                   <Select 
                     disabled={isFetchingLocations || !!parentId} 
                     onValueChange={(val) => form.setValue("parentLocationId", val === "root" ? null : val)}
                     value={form.watch("parentLocationId") || "root"}
                   >
-                    <SelectTrigger className="h-12 rounded-xl bg-muted/30 border-none shadow-inner font-bold focus:ring-primary/50">
+                    <SelectTrigger className="h-9.5 rounded-lg border border-border/60 bg-background text-xs font-medium focus:ring-primary/10 focus:border-primary/40 transition-all shadow-3xs">
                       <SelectValue placeholder="Select parent location">
                         {form.watch("parentLocationId") === null ? "Root (Top Level)" : 
                          allLocations.find(l => l.id === form.watch("parentLocationId"))?.name}
                       </SelectValue>
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl border-none shadow-2xl">
-                      <SelectItem value="root" className="font-black uppercase text-[10px] tracking-widest text-primary">Root (Top Level)</SelectItem>
+                    <SelectContent className="rounded-lg border border-border/40 shadow-md">
+                      <SelectItem value="root" className="font-bold text-[10px] tracking-wider text-primary uppercase">Root (Top Level)</SelectItem>
                       {allLocations.map((loc) => (
-                        <SelectItem key={loc.id} value={loc.id} className="font-bold">
+                        <SelectItem key={loc.id} value={loc.id} className="text-xs">
                           {loc.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  {parentId && <p className="text-[9px] font-bold text-primary italic ml-1 mt-1">Locked: Hierarchy Context</p>}
+                  {parentId && <p className="text-[10px] font-semibold text-primary/80 italic ml-1 mt-0.5">Locked: Branch Context</p>}
                 </div>
               </div>
             </div>
 
             {/* Description */}
-            <div className="space-y-2 md:col-span-2">
-               <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-1">Description / Purpose</Label>
+            <div className="space-y-1.5 md:col-span-2">
+               <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80 ml-1">Description / Purpose</Label>
                <Textarea 
                  {...form.register("description")} 
                  placeholder="Define the primary use-case for this physical space..." 
-                 className="min-h-[100px] rounded-2xl bg-muted/30 border-none shadow-inner font-medium resize-none focus-visible:ring-primary/50"
+                 className="min-h-[80px] rounded-lg border border-border/60 bg-background text-xs font-medium resize-none focus-visible:ring-primary/10 focus-visible:border-primary/40 transition-all shadow-3xs"
                />
             </div>
 
-            {/* Address Details - Visual Divider */}
-            <div className="md:col-span-2 flex items-center gap-4 pt-4">
-               <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground shrink-0 flex items-center gap-2">
-                  <MapPin size={12} /> Geographic Metadata
+            {/* Address Details - Divider */}
+            <div className="md:col-span-2 flex items-center gap-2 pt-2">
+               <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80 shrink-0 flex items-center gap-1.5">
+                  <MapPin size={11} /> Address Details
                </span>
-               <div className="h-px w-full bg-border/50" />
+               <div className="h-px w-full bg-border/30" />
             </div>
 
-            <div className="space-y-2 md:col-span-2">
-              <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-1">Address Line 1</Label>
-              <Input {...form.register("addressLine1")} className="h-12 rounded-xl bg-muted/30 border-none shadow-inner font-bold" />
+            <div className="space-y-1.5 md:col-span-2">
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80 ml-1">Address Line 1</Label>
+              <Input {...form.register("addressLine1")} className="h-9.5 rounded-lg border border-border/60 bg-background text-xs font-medium focus-visible:ring-primary/10 focus-visible:border-primary/40 transition-all shadow-3xs" />
             </div>
             
-            <div className="space-y-2 md:col-span-2">
-              <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-1">Address Line 2 (Optional)</Label>
-              <Input {...form.register("addressLine2")} className="h-12 rounded-xl bg-muted/30 border-none shadow-inner font-bold" />
+            <div className="space-y-1.5 md:col-span-2">
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80 ml-1">Address Line 2 (Optional)</Label>
+              <Input {...form.register("addressLine2")} className="h-9.5 rounded-lg border border-border/60 bg-background text-xs font-medium focus-visible:ring-primary/10 focus-visible:border-primary/40 transition-all shadow-3xs" />
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-1">City</Label>
-              <Input {...form.register("city")} className="h-12 rounded-xl bg-muted/30 border-none shadow-inner font-bold" />
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80 ml-1">City</Label>
+              <Input {...form.register("city")} className="h-9.5 rounded-lg border border-border/60 bg-background text-xs font-medium focus-visible:ring-primary/10 focus-visible:border-primary/40 transition-all shadow-3xs" />
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-1">State / Province</Label>
-              <Input {...form.register("state")} className="h-12 rounded-xl bg-muted/30 border-none shadow-inner font-bold" />
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80 ml-1">State / Province</Label>
+              <Input {...form.register("state")} className="h-9.5 rounded-lg border border-border/60 bg-background text-xs font-medium focus-visible:ring-primary/10 focus-visible:border-primary/40 transition-all shadow-3xs" />
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-1">Postal Code</Label>
-              <Input {...form.register("postalCode")} className="h-12 rounded-xl bg-muted/30 border-none shadow-inner font-bold" />
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80 ml-1">Postal Code</Label>
+              <Input {...form.register("postalCode")} className="h-9.5 rounded-lg border border-border/60 bg-background text-xs font-medium focus-visible:ring-primary/10 focus-visible:border-primary/40 transition-all shadow-3xs" />
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-1">Country</Label>
-              <Input {...form.register("country")} className="h-12 rounded-xl bg-muted/30 border-none shadow-inner font-bold" />
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80 ml-1">Country</Label>
+              <Input {...form.register("country")} className="h-9.5 rounded-lg border border-border/60 bg-background text-xs font-medium focus-visible:ring-primary/10 focus-visible:border-primary/40 transition-all shadow-3xs" />
             </div>
           </div>
 
-          <DialogFooter className="pt-8 border-t border-border/50 gap-3">
-            <Button type="button" variant="ghost" onClick={onClose} className="rounded-2xl h-14 px-8 font-black uppercase text-[11px] tracking-widest hover:bg-muted focus:ring-0">
-              Discard Changes
+          <DialogFooter className="pt-4 border-t border-border/30 gap-2">
+            <Button type="button" variant="ghost" onClick={onClose} className="rounded-lg h-9 px-4 text-xs font-semibold hover:bg-muted transition-colors">
+              Cancel
             </Button>
-            <Button type="submit" disabled={isLoading} className="rounded-2xl h-14 px-10 font-black shadow-2xl shadow-primary/30 uppercase text-[12px] tracking-[0.25em] min-w-[200px] transition-all hover:scale-[1.02] active:scale-[0.98]">
-              {isLoading ? <Loader2 className="animate-spin size-5" /> : <><Save className="mr-2.5 size-5" /> {location ? "Synchronize" : "Finalize Location"}</>}
+            <Button type="submit" disabled={isLoading} className="rounded-lg h-9 px-5 font-semibold text-xs transition-all duration-150 min-w-[120px] shadow-2xs">
+              {isLoading ? <Loader2 className="animate-spin size-4" /> : <><Save className="mr-1.5 size-3.5" /> {location ? "Save Changes" : "Add Location"}</>}
             </Button>
           </DialogFooter>
         </form>

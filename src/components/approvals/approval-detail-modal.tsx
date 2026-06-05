@@ -46,11 +46,11 @@ export function ApprovalDetailModal({
       );
 
       if (res.success) {
-        // toast.success(`Request ${status.toLowerCase()} successfully`);
+        toast.success(`Request ${status.toLowerCase()} successfully`);
         onOpenChange(false);
         setReviewNote("");
       } else {
-        alert(res.error || "Failed to process request");
+        toast.error(res.error || "Failed to process request");
       }
     });
   };

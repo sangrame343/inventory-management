@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Wrench } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -81,7 +82,7 @@ export function MaintenanceTicketForm({
       router.refresh();
     },
     onError: (err: any) => {
-      alert(err.message);
+      toast.error(err.message);
     },
   });
 

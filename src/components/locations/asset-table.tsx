@@ -79,7 +79,9 @@ export function AssetTable({ assets, subtreeAssets }: { assets: any[]; subtreeAs
                     </TableCell>
                   )}
                   <TableCell className="text-xs font-medium">
-                    {asset.assignments[0]?.employee?.fullName || asset.assignments[0]?.user?.name || (
+                    {asset.assignments[0]?.employee?.fullName ||
+                    asset.assignments[0]?.user?.name ||
+                    asset.assignments[0]?.department?.name || (
                       <span className="text-muted-foreground italic font-normal">Available</span>
                     )}
                   </TableCell>

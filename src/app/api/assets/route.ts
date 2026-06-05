@@ -111,7 +111,7 @@ export async function POST(req: Request) {
       let finalAssetCode = assetCode?.trim() || null;
       let finalAssetTag = assetTag?.trim() || null;
 
-      if (settings?.autoGenerateAssetCode && (!finalAssetCode || !finalAssetTag)) {
+      if (!finalAssetCode || !finalAssetTag) {
         // Increment sequence
         const company = await tx.company.update({
           where: { id: companyId },

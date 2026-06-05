@@ -59,10 +59,10 @@ export function SearchableSelector({
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className={cn("w-full justify-between h-9 px-3 font-normal", className)}
+            className={cn("w-full justify-between h-9 px-3 font-normal min-w-0 overflow-hidden", className)}
             disabled={disabled}
           >
-            <span className="truncate">
+            <span className="truncate text-left flex-1 min-w-0">
               {selectedOption ? selectedOption.label : placeholder}
             </span>
             <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />

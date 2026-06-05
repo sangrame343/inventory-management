@@ -36,6 +36,7 @@ export function DashboardGrid({ stats }: DashboardGridProps) {
           iconBg="bg-violet-500/10"
           iconColor="text-violet-500"
         >
+          <StatItem label="Total Assets" value={stats.assets.total} />
           <StatItem label="Active Assets" value={stats.assets.active} />
           <StatItem label="Assigned Assets" value={stats.assets.assigned} />
           <StatItem label="In Repair" value={stats.assets.repair} />
