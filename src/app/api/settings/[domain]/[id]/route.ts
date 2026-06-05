@@ -4,6 +4,7 @@ import { SettingsService } from "@/services/settings-service";
 import { domainSchemas } from "@/lib/validations/settings";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { revalidateTag } from "next/cache";
 
 const domainToModel = {
   "asset-categories": "assetCategory",
@@ -67,6 +68,7 @@ export async function PATCH(
         throw new Error(`Model ${model} not supported for update.`);
     }
 
+    revalidateTag(`${domainParam}-${companyId}`, 'max');
     return NextResponse.json(item);
   } catch (error: any) {
     if (error instanceof z.ZodError) {
@@ -103,6 +105,7 @@ export async function DELETE(
     }
 
     const item = await SettingsService.processMasterItemDeletion(model, id, companyId);
+    revalidateTag(`${domainParam}-${companyId}`, 'max');
     return NextResponse.json(item);
   } catch (error: any) {
     // Handle Prisma unique/foreign key constraint violations

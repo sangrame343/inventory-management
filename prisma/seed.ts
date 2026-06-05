@@ -381,7 +381,7 @@ async function main() {
       companyId: companyA.id,
       sku: "PRT-001",
       name: "Spare Keyboard",
-      categoryId: catParts_A.id,
+      categoryId: catLaptop_A.id,
       unitId: unitPcs_A.id,
       defaultLocationId: invLocHQ_A.id,
       minStockLevel: 5,

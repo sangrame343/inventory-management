@@ -1,122 +1,173 @@
 import { db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
+import { unstable_cache, revalidateTag } from "next/cache";
 
 export class SettingsService {
   static async getSettings(companyId: string) {
-    let settings = await db.companySettings.findUnique({
-      where: { companyId },
-    });
+    return unstable_cache(
+      async () => {
+        let settings = await db.companySettings.findUnique({
+          where: { companyId },
+        });
 
-    if (!settings) {
-      settings = await db.companySettings.create({
-        data: {
-          companyId,
-          assetCodePrefix: "ASSET",
-          currency: "INR",
-          dateFormat: "DD-MM-YYYY",
-          maintenanceReminderDays: 7,
-          requireTransferApproval: true,
-          requireMaintenanceApproval: false,
-          autoGenerateAssetCode: true,
-        },
-      });
-    }
+        if (!settings) {
+          settings = await db.companySettings.create({
+            data: {
+              companyId,
+              assetCodePrefix: "ASSET",
+              currency: "INR",
+              dateFormat: "DD-MM-YYYY",
+              maintenanceReminderDays: 7,
+              requireTransferApproval: true,
+              requireMaintenanceApproval: false,
+              autoGenerateAssetCode: true,
+            },
+          });
+        }
 
-    return settings;
+        return settings;
+      },
+      [`settings-${companyId}`],
+      { tags: [`settings-${companyId}`] }
+    )();
   }
 
   static async updateSettings(companyId: string, data: Prisma.CompanySettingsUncheckedUpdateInput) {
-    return await db.companySettings.update({
+    const res = await db.companySettings.update({
       where: { companyId },
       data,
     });
+    revalidateTag(`settings-${companyId}`, 'max');
+    return res;
   }
 
   // Master Data: Departments
   static async getDepartments(companyId: string, isActive?: boolean) {
-    return await db.department.findMany({
-      where: { 
-        companyId,
-        ...(isActive !== undefined ? { isActive } : {})
+    return unstable_cache(
+      async () => {
+        return await db.department.findMany({
+          where: { 
+            companyId,
+            ...(isActive !== undefined ? { isActive } : {})
+          },
+          orderBy: { name: "asc" },
+        });
       },
-      orderBy: { name: "asc" },
-    });
+      [`departments-${companyId}-${isActive}`],
+      { tags: [`departments-${companyId}`] }
+    )();
   }
 
   static async updateDepartment(id: string, companyId: string, data: Prisma.DepartmentUncheckedUpdateInput) {
-    return await db.department.update({
+    const res = await db.department.update({
       where: { id, companyId },
       data,
     });
+    revalidateTag(`departments-${companyId}`, 'max');
+    return res;
   }
 
   // Master Data: Asset Categories
   static async getAssetCategories(companyId: string, isActive?: boolean) {
-    return await db.assetCategory.findMany({
-      where: { 
-        companyId,
-        ...(isActive !== undefined ? { isActive } : {})
+    return unstable_cache(
+      async () => {
+        return await db.assetCategory.findMany({
+          where: { 
+            companyId,
+            ...(isActive !== undefined ? { isActive } : {})
+          },
+          orderBy: { name: "asc" },
+        });
       },
-      orderBy: { name: "asc" },
-    });
+      [`asset-categories-${companyId}-${isActive}`],
+      { tags: [`asset-categories-${companyId}`] }
+    )();
   }
 
   static async updateAssetCategory(id: string, companyId: string, data: Prisma.AssetCategoryUncheckedUpdateInput) {
-    return await db.assetCategory.update({
+    const res = await db.assetCategory.update({
       where: { id, companyId },
       data,
     });
+    revalidateTag(`asset-categories-${companyId}`, 'max');
+    return res;
   }
 
   // Master Data: Vendors
   static async getVendors(companyId: string, isActive?: boolean) {
-    return await db.vendor.findMany({
-      where: { 
-        companyId,
-        ...(isActive !== undefined ? { isActive } : {})
+    return unstable_cache(
+      async () => {
+        return await db.vendor.findMany({
+          where: { 
+            companyId,
+            ...(isActive !== undefined ? { isActive } : {})
+          },
+          orderBy: { name: "asc" },
+        });
       },
-      orderBy: { name: "asc" },
-    });
+      [`vendors-${companyId}-${isActive}`],
+      { tags: [`vendors-${companyId}`] }
+    )();
   }
 
   static async updateVendor(id: string, companyId: string, data: Prisma.VendorUncheckedUpdateInput) {
-    return await db.vendor.update({
+    const res = await db.vendor.update({
       where: { id, companyId },
       data,
     });
+    revalidateTag(`vendors-${companyId}`, 'max');
+    return res;
   }
 
   // Master Data: Inventory Categories
   static async getInventoryCategories(companyId: string, isActive?: boolean) {
-    return await db.inventoryCategory.findMany({
-      where: { 
-        companyId,
-        ...(isActive !== undefined ? { isActive } : {})
+    return unstable_cache(
+      async () => {
+        return await db.inventoryCategory.findMany({
+          where: { 
+            companyId,
+            ...(isActive !== undefined ? { isActive } : {})
+          },
+          orderBy: { name: "asc" },
+        });
       },
-      orderBy: { name: "asc" },
-    });
+      [`inventory-categories-${companyId}-${isActive}`],
+      { tags: [`inventory-categories-${companyId}`] }
+    )();
   }
 
   // Master Data: Units of Measure
   static async getUnitsOfMeasure(companyId: string, isActive?: boolean) {
-    return await db.unitOfMeasure.findMany({
-      where: { 
-        companyId,
-        ...(isActive !== undefined ? { isActive } : {})
+    return unstable_cache(
+      async () => {
+        return await db.unitOfMeasure.findMany({
+          where: { 
+            companyId,
+            ...(isActive !== undefined ? { isActive } : {})
+          },
+          orderBy: { name: "asc" },
+        });
       },
-      orderBy: { name: "asc" },
-    });
+      [`units-of-measure-${companyId}-${isActive}`],
+      { tags: [`units-of-measure-${companyId}`] }
+    )();
   }
 
   // Master Data: Inventory Locations
   static async getInventoryLocations(companyId: string, isActive?: boolean) {
-    return await db.inventoryLocation.findMany({
-      where: { 
-        companyId,
-        ...(isActive !== undefined ? { isActive } : {})
+    return unstable_cache(
+      async () => {
+        return await db.inventoryLocation.findMany({
+          where: { 
+            companyId,
+            ...(isActive !== undefined ? { isActive } : {})
+          },
+          orderBy: { name: "asc" },
+        });
       },
-      orderBy: { name: "asc" },
-    });
+      [`inventory-locations-${companyId}-${isActive}`],
+      { tags: [`inventory-locations-${companyId}`] }
+    )();
   }
 
   // Standardized Two-Step Deletion Flow
@@ -169,7 +220,18 @@ export class SettingsService {
         throw new Error(`Usage Blocked: This item is currently linked to ${reasons}. Reassign these records before deactivating.`);
       }
 
-      return await dbModel.update({ where: { id, companyId }, data: { isActive: false } });
+      const tagMap = {
+        department: 'departments',
+        assetCategory: 'asset-categories',
+        vendor: 'vendors',
+        inventoryCategory: 'inventory-categories',
+        unitOfMeasure: 'units-of-measure',
+        inventoryLocation: 'inventory-locations'
+      } as const;
+
+      const res = await dbModel.update({ where: { id, companyId }, data: { isActive: false } });
+      revalidateTag(`${tagMap[model]}-${companyId}`, 'max');
+      return res;
     } else {
       // Step 2: HARD DELETE (Purge)
       // Exhaustive check including historical/archived dependencies
@@ -217,7 +279,18 @@ export class SettingsService {
         throw new Error(`Permanent Deletion Blocked: Historical data (${dependencies.join(', ')}) is linked to this item for audit purposes. Keep it deactivated instead.`);
       }
 
-      return await dbModel.delete({ where: { id, companyId } });
+      const tagMap = {
+        department: 'departments',
+        assetCategory: 'asset-categories',
+        vendor: 'vendors',
+        inventoryCategory: 'inventory-categories',
+        unitOfMeasure: 'units-of-measure',
+        inventoryLocation: 'inventory-locations'
+      } as const;
+
+      const res = await dbModel.delete({ where: { id, companyId } });
+      revalidateTag(`${tagMap[model]}-${companyId}`, 'max');
+      return res;
     }
   }
 

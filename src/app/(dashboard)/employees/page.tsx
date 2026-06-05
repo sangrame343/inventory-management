@@ -7,23 +7,53 @@ import { EmployeeExportButton } from "@/components/employees/employee-export-but
 import { SettingsService } from "@/services/settings-service";
 import { LocationService } from "@/services/location-service";
 
-export default async function EmployeesPage() {
+export default async function EmployeesPage(props: {
+  searchParams: Promise<{
+    page?: string;
+    limit?: string;
+    query?: string;
+    status?: string;
+    departmentId?: string;
+    locationId?: string;
+    sortBy?: string;
+    order?: string;
+  }>;
+}) {
+  const searchParams = await props.searchParams;
   const session = await auth();
   if (!session?.user?.activeCompanyId) return null;
 
   const companyId = session.user.activeCompanyId;
-  const [employees, departments, locations] = await Promise.all([
-    EmployeeService.getEmployees(companyId),
+  const page = Number(searchParams.page) || 1;
+  const limit = Number(searchParams.limit) || 10;
+  const query = searchParams.query || "";
+  const status = searchParams.status || "";
+  const departmentId = searchParams.departmentId || "";
+  const locationId = searchParams.locationId || "";
+  const sortBy = searchParams.sortBy || "fullName";
+  const order = (searchParams.order as "asc" | "desc") || "asc";
+
+  const [employeesData, statusCounts, departments, locations] = await Promise.all([
+    EmployeeService.getEmployeesPaginated(companyId, {
+      page,
+      limit,
+      query,
+      status,
+      departmentId,
+      locationId,
+      sortBy,
+      order,
+    }),
+    EmployeeService.getEmployeeStatusCounts(companyId),
     SettingsService.getDepartments(companyId),
     LocationService.getLocations(companyId),
   ]);
 
   // Compute quick stats
-  const activeCount = employees.filter((e) => e.status === "ACTIVE").length;
-  const onLeaveCount = employees.filter((e) => e.status === "ON_LEAVE").length;
-  const inactiveCount = employees.filter(
-    (e) => !["ACTIVE", "ON_LEAVE"].includes(e.status)
-  ).length;
+  const totalEmployeesCount = Object.values(statusCounts).reduce((a, b) => a + b, 0);
+  const activeCount = statusCounts["ACTIVE"] || 0;
+  const onLeaveCount = statusCounts["ON_LEAVE"] || 0;
+  const inactiveCount = totalEmployeesCount - activeCount - onLeaveCount;
 
   return (
     <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -52,7 +82,7 @@ export default async function EmployeesPage() {
       <div className="flex flex-wrap items-center gap-2">
         <div className="inline-flex items-center gap-2 rounded-lg border border-border/50 bg-card px-3 py-2 shadow-2xs">
           <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Total</span>
-          <span className="text-sm font-bold text-foreground tabular-nums">{employees.length}</span>
+          <span className="text-sm font-bold text-foreground tabular-nums">{totalEmployeesCount}</span>
         </div>
         <div className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2 shadow-2xs">
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -78,7 +108,8 @@ export default async function EmployeesPage() {
       <div className="h-px bg-gradient-to-r from-border via-border/50 to-transparent" />
 
       <EmployeeList
-        employees={employees}
+        employees={employeesData.data}
+        totalCount={employeesData.total}
         departments={departments}
         locations={locations}
       />

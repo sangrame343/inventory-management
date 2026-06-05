@@ -3,8 +3,10 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
-import { MovementDirection, MovementType, AssetStatus } from "@prisma/client";
+import { MovementDirection, MovementType, AssetStatus, Role } from "@prisma/client";
 import { generateAssetCode, generateAssetTag } from "@/lib/asset-utils";
+import { checkPermission } from "@/lib/permissions";
+import { ApprovalService } from "@/lib/services/approval-service";
 
 async function getSessionContext() {
   const session = await auth();
@@ -15,6 +17,15 @@ async function getSessionContext() {
     userId: session.user.id,
     companyId: session.user.activeCompanyId,
   };
+}
+
+async function getUserRole(companyId: string, userId: string): Promise<Role> {
+  const userCompanyRole = await db.companyUser.findUnique({
+    where: { companyId_userId: { companyId, userId } },
+  });
+  const session = await auth();
+  if (session?.user?.isSuperAdmin) return Role.SUPER_ADMIN;
+  return userCompanyRole?.role || Role.USER;
 }
 
 export type AddStockTransactionInput = {
@@ -33,6 +44,33 @@ export type AddStockTransactionInput = {
 
 export async function addStockTransaction(input: AddStockTransactionInput) {
   const { companyId, userId } = await getSessionContext();
+
+  const role = await getUserRole(companyId, userId);
+  const action = input.direction === "IN" ? "CREATE" : "ISSUE";
+  const permission = checkPermission(role, "INVENTORY", action);
+
+  if (permission === "DENY") {
+    throw new Error("Unauthorized");
+  }
+
+  if (permission === "REQUIRE_APPROVAL") {
+    const item = await db.inventoryItem.findUnique({
+      where: { id: input.itemId },
+      select: { name: true }
+    });
+    const itemName = item?.name || "Unknown Item";
+
+    await ApprovalService.createRequest({
+      companyId,
+      requestedById: userId,
+      module: "INVENTORY",
+      action,
+      title: `Stock movement (${input.direction}): ${input.quantity} units for ${itemName}`,
+      summary: `Request to process ${input.direction} stock transaction of ${input.quantity} units for ${itemName}.`,
+      payload: input,
+    });
+    return { success: true, message: "Request submitted for approval" };
+  }
   
   if (input.quantity <= 0) {
     throw new Error("Quantity must be greater than zero.");
@@ -107,6 +145,32 @@ export type AdjustStockInput = {
 
 export async function adjustStock(input: AdjustStockInput) {
   const { companyId, userId } = await getSessionContext();
+
+  const role = await getUserRole(companyId, userId);
+  const permission = checkPermission(role, "INVENTORY", "UPDATE");
+
+  if (permission === "DENY") {
+    throw new Error("Unauthorized");
+  }
+
+  if (permission === "REQUIRE_APPROVAL") {
+    const item = await db.inventoryItem.findUnique({
+      where: { id: input.itemId },
+      select: { name: true }
+    });
+    const itemName = item?.name || "Unknown Item";
+
+    await ApprovalService.createRequest({
+      companyId,
+      requestedById: userId,
+      module: "INVENTORY",
+      action: "UPDATE",
+      title: `Stock Adjustment for ${itemName}`,
+      summary: `Request to adjust stock of ${itemName} to actual quantity of ${input.actualQty}. Reason: ${input.reason}`,
+      payload: input,
+    });
+    return { success: true, message: "Request submitted for approval" };
+  }
 
   if (input.actualQty < 0) {
     throw new Error("Actual quantity cannot be negative.");
@@ -243,6 +307,32 @@ export type IssueInventoryInput = {
 
 export async function issueInventoryToEmployee(input: IssueInventoryInput) {
   const { companyId, userId } = await getSessionContext();
+
+  const role = await getUserRole(companyId, userId);
+  const permission = checkPermission(role, "INVENTORY", "ISSUE");
+
+  if (permission === "DENY") {
+    throw new Error("Unauthorized");
+  }
+
+  if (permission === "REQUIRE_APPROVAL") {
+    const item = await db.inventoryItem.findUnique({
+      where: { id: input.itemId },
+      select: { name: true }
+    });
+    const itemName = item?.name || "Unknown Item";
+
+    await ApprovalService.createRequest({
+      companyId,
+      requestedById: userId,
+      module: "INVENTORY",
+      action: "ISSUE",
+      title: `Issue ${input.quantity} units of ${itemName}`,
+      summary: `Request to issue ${input.quantity} units of ${itemName} to employee/department. Notes: ${input.notes || "None"}`,
+      payload: input,
+    });
+    return { success: true, message: "Request submitted for approval" };
+  }
 
   if (input.quantity <= 0) {
     throw new Error("Quantity must be greater than zero.");
@@ -468,14 +558,30 @@ export type AssignInventoryStockInput = {
 export async function assignInventoryStock(input: AssignInventoryStockInput) {
   const { companyId, userId } = await getSessionContext();
 
-  const userCompanyRole = await db.companyUser.findUnique({
-    where: { companyId_userId: { companyId, userId } },
-  });
-  const session = await auth();
-  const isSuperAdmin = session?.user?.isSuperAdmin;
-  const isCompanyAdmin = userCompanyRole?.role === "ADMIN" || userCompanyRole?.role === "SUPER_ADMIN" || isSuperAdmin;
-  if (!isCompanyAdmin) {
-    throw new Error("Unauthorized: Only Admins or Super Admins can assign stock.");
+  const role = await getUserRole(companyId, userId);
+  const permission = checkPermission(role, "INVENTORY", "ASSIGN");
+
+  if (permission === "DENY") {
+    throw new Error("Unauthorized");
+  }
+
+  if (permission === "REQUIRE_APPROVAL") {
+    const item = await db.inventoryItem.findUnique({
+      where: { id: input.itemId },
+      select: { name: true }
+    });
+    const itemName = item?.name || "Unknown Item";
+
+    await ApprovalService.createRequest({
+      companyId,
+      requestedById: userId,
+      module: "INVENTORY",
+      action: "ASSIGN",
+      title: `Assign ${input.quantity} units of ${itemName}`,
+      summary: `Request to assign ${input.quantity} units of ${itemName}. Notes: ${input.notes || "None"}`,
+      payload: input,
+    });
+    return { success: true, message: "Request submitted for approval" };
   }
 
   if (input.quantity <= 0) {

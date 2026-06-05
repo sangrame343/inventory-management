@@ -438,6 +438,11 @@ model Asset {
   @@index([companyId])
   @@index([categoryId])
   @@index([status])
+  @@index([companyId, status])
+  @@index([companyId, departmentId])
+  @@index([companyId, locationId])
+  @@index([companyId, purchaseDate])
+  @@index([companyId, createdAt])
 }
 
 model AssetAssignment {
@@ -484,6 +489,9 @@ model AssetAssignment {
   @@index([assetId])
   @@index([userId])
   @@index([transactionId])
+  @@index([companyId, returnedAt])
+  @@index([companyId, employeeId])
+  @@index([companyId, assignedAt])
 }
 
 model AssetTransfer {
@@ -626,6 +634,10 @@ model Employee {
 
   @@unique([companyId, employeeCode])
   @@index([companyId])
+  @@index([companyId, status])
+  @@index([companyId, departmentId])
+  @@index([companyId, locationId])
+  @@index([companyId, fullName])
 }
 
 model Vendor {
@@ -833,6 +845,10 @@ model InventoryItem {
   @@index([categoryId])
   @@index([status])
   @@index([itemType])
+  @@index([companyId, status])
+  @@index([companyId, categoryId])
+  @@index([companyId, defaultLocationId])
+  @@index([companyId, createdAt])
 }
 
 model InventoryAssignment {

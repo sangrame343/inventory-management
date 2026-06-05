@@ -3,7 +3,9 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
-import { InventoryItemStatus, InventoryItemType } from "@prisma/client";
+import { InventoryItemStatus, InventoryItemType, Role } from "@prisma/client";
+import { checkPermission } from "@/lib/permissions";
+import { ApprovalService } from "@/lib/services/approval-service";
 
 async function getSessionContext() {
   const session = await auth();
@@ -14,6 +16,15 @@ async function getSessionContext() {
     userId: session.user.id,
     companyId: session.user.activeCompanyId,
   };
+}
+
+async function getUserRole(companyId: string, userId: string): Promise<Role> {
+  const userCompanyRole = await db.companyUser.findUnique({
+    where: { companyId_userId: { companyId, userId } },
+  });
+  const session = await auth();
+  if (session?.user?.isSuperAdmin) return Role.SUPER_ADMIN;
+  return userCompanyRole?.role || Role.USER;
 }
 
 export type CreateInventoryItemInput = {
@@ -51,6 +62,23 @@ export type CreateInventoryItemInput = {
 
 export async function createInventoryItem(input: CreateInventoryItemInput) {
   const { companyId, userId } = await getSessionContext();
+
+  const role = await getUserRole(companyId, userId);
+  const permission = checkPermission(role, "INVENTORY", "CREATE");
+  if (permission === "DENY") throw new Error("Unauthorized");
+
+  if (permission === "REQUIRE_APPROVAL") {
+    await ApprovalService.createRequest({
+      companyId,
+      requestedById: userId,
+      module: "INVENTORY",
+      action: "CREATE",
+      title: `Create Inventory Item: ${input.name}`,
+      summary: `Request to create inventory item ${input.name}`,
+      payload: input,
+    });
+    return { success: true, message: "Request submitted for approval" };
+  }
 
   const res = await db.$transaction(async (tx) => {
     let finalSku = input.sku?.trim();
@@ -151,6 +179,25 @@ export async function updateInventoryItem(id: string, input: Partial<CreateInven
     throw new Error("Item not found or unauthorized.");
   }
 
+  const role = await getUserRole(companyId, userId);
+  const permission = checkPermission(role, "INVENTORY", "UPDATE");
+  if (permission === "DENY") throw new Error("Unauthorized");
+
+  if (permission === "REQUIRE_APPROVAL") {
+    await ApprovalService.createRequest({
+      companyId,
+      requestedById: userId,
+      module: "INVENTORY",
+      action: "UPDATE",
+      title: `Update Inventory Item: ${existing.name}`,
+      summary: `Request to update inventory item ${existing.name}`,
+      targetRecordId: id,
+      oldData: existing,
+      payload: input,
+    });
+    return { success: true, message: "Request submitted for approval" };
+  }
+
   if (input.sku && input.sku !== existing.sku) {
     const dupe = await db.inventoryItem.findFirst({
       where: { companyId, sku: input.sku },
@@ -203,6 +250,25 @@ export async function toggleInventoryItemActive(id: string, active: boolean) {
   const itm = await db.inventoryItem.findUnique({ where: { id } });
   if (!itm || itm.companyId !== companyId) throw new Error("Not found");
 
+  const role = await getUserRole(companyId, userId);
+  const permission = checkPermission(role, "INVENTORY", "UPDATE");
+  if (permission === "DENY") throw new Error("Unauthorized");
+
+  if (permission === "REQUIRE_APPROVAL") {
+    await ApprovalService.createRequest({
+      companyId,
+      requestedById: userId,
+      module: "INVENTORY",
+      action: "UPDATE",
+      title: `${active ? "Activate" : "Deactivate"} Inventory Item: ${itm.name}`,
+      summary: `Request to ${active ? "activate" : "deactivate"} inventory item ${itm.name}`,
+      targetRecordId: id,
+      oldData: itm,
+      payload: { status: active ? "ACTIVE" : "INACTIVE" },
+    });
+    return { success: true, message: "Request submitted for approval" };
+  }
+
   const res = await db.inventoryItem.update({
     where: { id },
     data: {
@@ -216,21 +282,81 @@ export async function toggleInventoryItemActive(id: string, active: boolean) {
   return res;
 }
 
-export async function getInventoryItems() {
+export async function getInventoryItems(params?: {
+  page?: number;
+  limit?: number;
+  query?: string;
+  categoryId?: string;
+  locationId?: string;
+  sortBy?: string;
+  order?: "asc" | "desc";
+}) {
   const { companyId } = await getSessionContext();
 
-  return db.inventoryItem.findMany({
-    where: { companyId },
-    include: {
-      category: true,
-      unit: true,
-      defaultLocation: true,
-      balances: true,
-      purchasedFromDepartment: true,
-      department: true,
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  const page = params?.page || 1;
+  const limit = params?.limit || 10;
+  const skip = (page - 1) * limit;
+  const take = limit;
+
+  const andConditions: any[] = [{ companyId }];
+
+  if (params?.query) {
+    const q = params.query.trim();
+    andConditions.push({
+      OR: [
+        { name: { contains: q, mode: "insensitive" } },
+        { sku: { contains: q, mode: "insensitive" } },
+        { brand: { contains: q, mode: "insensitive" } },
+        { model: { contains: q, mode: "insensitive" } },
+      ],
+    });
+  }
+
+  if (params?.categoryId) {
+    andConditions.push({ categoryId: params.categoryId });
+  }
+
+  if (params?.locationId) {
+    andConditions.push({ defaultLocationId: params.locationId });
+  }
+
+  const where = { AND: andConditions };
+
+  const sortField = params?.sortBy || "createdAt";
+  const sortOrder = params?.order || "desc";
+  let orderBy: any = { createdAt: "desc" };
+
+  if (sortField === "name") {
+    orderBy = { name: sortOrder };
+  } else if (sortField === "sku") {
+    orderBy = { sku: sortOrder };
+  } else if (sortField === "totalQuantity") {
+    orderBy = { totalQuantity: sortOrder };
+  } else if (sortField === "availableQuantity") {
+    orderBy = { availableQuantity: sortOrder };
+  } else if (sortField === "createdAt") {
+    orderBy = { createdAt: sortOrder };
+  }
+
+  const [total, data] = await Promise.all([
+    db.inventoryItem.count({ where }),
+    db.inventoryItem.findMany({
+      where,
+      include: {
+        category: true,
+        unit: true,
+        defaultLocation: true,
+        balances: true,
+        purchasedFromDepartment: true,
+        department: true,
+      },
+      orderBy,
+      skip,
+      take,
+    }),
+  ]);
+
+  return { total, data };
 }
 
 export async function getInventoryItemById(id: string) {
@@ -255,7 +381,7 @@ export async function getInventoryItemById(id: string) {
 }
 
 export async function deleteInventoryItem(id: string) {
-  const { companyId } = await getSessionContext();
+  const { companyId, userId } = await getSessionContext();
 
   const existing = await db.inventoryItem.findUnique({
     where: { id },
@@ -263,6 +389,24 @@ export async function deleteInventoryItem(id: string) {
 
   if (!existing || existing.companyId !== companyId) {
     throw new Error("Item not found or unauthorized.");
+  }
+
+  const role = await getUserRole(companyId, userId);
+  const permission = checkPermission(role, "INVENTORY", "DELETE");
+  if (permission === "DENY") throw new Error("Unauthorized");
+
+  if (permission === "REQUIRE_APPROVAL") {
+    await ApprovalService.createRequest({
+      companyId,
+      requestedById: userId,
+      module: "INVENTORY",
+      action: "DELETE",
+      title: `Delete Inventory Item: ${existing.name}`,
+      summary: `Request to delete inventory item ${existing.name}`,
+      targetRecordId: id,
+      payload: { id },
+    });
+    return { success: true, message: "Request submitted for approval" };
   }
 
   await db.$transaction(async (tx) => {

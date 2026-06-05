@@ -1,7 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Plus, Package, Layers, AlertTriangle, XCircle, Search, Settings } from "lucide-react";
+import { Plus, Package, Layers, AlertTriangle, XCircle, Search, Settings, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useDebouncedCallback } from "use-debounce";
+import { cn } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,6 +33,8 @@ type PopulatedItem = InventoryItem & {
 
 export function InventoryDashboard({
   initialItems,
+  totalCount,
+  stats,
   categories,
   locations,
   units,
@@ -40,6 +45,14 @@ export function InventoryDashboard({
   currentUserId,
 }: {
   initialItems: PopulatedItem[];
+  totalCount: number;
+  stats: {
+    totalItems: number;
+    activeItems: number;
+    totalVolume: number;
+    lowStockCount: number;
+    outOfStockCount: number;
+  };
   categories: { id: string; name: string }[];
   locations: InventoryLocation[];
   units: UnitOfMeasure[];
@@ -49,7 +62,46 @@ export function InventoryDashboard({
   vendors: { id: string; name: string }[];
   currentUserId: string;
 }) {
-  const [searchTerm, setSearchTerm] = useState("");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const currentSortBy = searchParams.get("sortBy") || "createdAt";
+  const currentOrder = searchParams.get("order") || "desc";
+  const currentPage = Number(searchParams.get("page")) || 1;
+  const currentLimit = Number(searchParams.get("limit")) || 10;
+
+  const [searchTerm, setSearchTerm] = useState(searchParams.get("query") || "");
+
+  const debouncedSearch = useDebouncedCallback((val: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (val.trim()) {
+      params.set("query", val.trim())
+    } else {
+      params.delete("query")
+    }
+    params.set("page", "1")
+    router.push(`/inventory?${params.toString()}`)
+  }, 300)
+
+  const handleSearchChange = (val: string) => {
+    setSearchTerm(val)
+    debouncedSearch(val)
+  }
+
+  const handlePageChange = (newPage: number) => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set("page", newPage.toString())
+    router.push(`/inventory?${params.toString()}`)
+  }
+
+  const handlePageSizeChange = (newSize: number) => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set("limit", newSize.toString())
+    params.set("page", "1")
+    router.push(`/inventory?${params.toString()}`)
+  }
+
+  const totalPages = Math.ceil(totalCount / currentLimit) || 1;
 
   const [isAddModalOpen, setAddModalOpen] = useState(false);
   
@@ -60,30 +112,8 @@ export function InventoryDashboard({
   const [assigningStockItem, setAssigningStockItem] = useState<PopulatedItem | null>(null);
   const [assigningType, setAssigningType] = useState<"EMPLOYEE" | "DEPARTMENT">("EMPLOYEE");
 
-  const filteredItems = useMemo(() => {
-    let list = initialItems;
-    if (searchTerm) {
-      const q = searchTerm.toLowerCase();
-      list = list.filter((i) => i.name.toLowerCase().includes(q) || i.sku.toLowerCase().includes(q));
-    }
-    return list;
-  }, [initialItems, searchTerm]);
-
-  // Derived Stats
-  const totalItems = initialItems.length;
-  const activeItems = initialItems.filter(i => i.status === "ACTIVE").length;
-  
-  let lowStockCount = 0;
-  let outOfStockCount = 0;
-  let totalVolume = 0;
-
-  initialItems.forEach(item => {
-    const qty = item.availableQuantity;
-    totalVolume += qty;
-    
-    if (qty <= 0) outOfStockCount++;
-    else if (qty <= item.reorderLevel) lowStockCount++;
-  });
+  // Stats
+  const { totalItems, activeItems, totalVolume, lowStockCount, outOfStockCount } = stats;
 
   const handleDeleteItem = async (item: PopulatedItem) => {
     const ok = await confirmDialog({
@@ -193,7 +223,7 @@ export function InventoryDashboard({
           <Input 
             placeholder="Search items by SKU or Name..." 
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             className="pl-9 w-full bg-background/70 shadow-sm border-muted/60 focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/10 transition-all duration-200" 
           />
         </div>
@@ -211,7 +241,7 @@ export function InventoryDashboard({
       {/* Table Section with modern border container */}
       <div className="rounded-2xl border border-muted/60 bg-card overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300">
         <InventoryTable 
-          items={filteredItems}
+          items={initialItems}
           onEdit={(i) => setEditingItem(i)}
           onAdjustStock={(i) => setAdjustingStockItem(i)}
           onStockIn={(i) => setMovingStockItem({item: i, direction: "IN"})}
@@ -220,6 +250,77 @@ export function InventoryDashboard({
           onAssignDepartment={(i) => { setAssigningStockItem(i); setAssigningType("DEPARTMENT"); }}
           onDelete={handleDeleteItem}
         />
+        
+        {/* Table footer summary with Pagination controls */}
+        {totalCount > 0 && (
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 py-3 border-t border-muted/20 bg-muted/10">
+            <div className="flex flex-wrap items-center gap-2 order-2 sm:order-1">
+              <span className="text-[11px] text-muted-foreground/60">
+                Showing{" "}
+                <span className="font-semibold text-foreground/70 tabular-nums">
+                  {totalCount === 0 ? 0 : (currentPage - 1) * currentLimit + 1}
+                  –
+                  {Math.min(currentPage * currentLimit, totalCount)}
+                </span>
+                {" "}of{" "}
+                <span className="font-semibold text-foreground/70 tabular-nums">{totalCount}</span>
+                {" "}items
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-4 order-1 sm:order-2">
+              {/* Rows per page selector */}
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-muted-foreground">Rows per page</span>
+                <select
+                  value={currentLimit}
+                  onChange={(e) => {
+                    handlePageSizeChange(Number(e.target.value))
+                  }}
+                  className="h-7 rounded-lg border border-border/40 bg-card px-2 py-0.5 text-xs shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors cursor-pointer"
+                >
+                  {[10, 25, 50, 100].map((ps) => (
+                    <option key={ps} value={ps}>
+                      {ps}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Page navigation */}
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-muted-foreground min-w-[50px] text-center tabular-nums">
+                  {currentPage} / {totalPages}
+                </span>
+                <div className="flex items-center gap-0.5 bg-muted/30 rounded-lg p-0.5 border border-border/40 shadow-3xs">
+                  {[
+                    { icon: ChevronsLeft, label: "First", onClick: () => handlePageChange(1), disabled: currentPage <= 1 },
+                    { icon: ChevronLeft, label: "Previous", onClick: () => handlePageChange(currentPage - 1), disabled: currentPage <= 1 },
+                    { icon: ChevronRight, label: "Next", onClick: () => handlePageChange(currentPage + 1), disabled: currentPage >= totalPages },
+                    { icon: ChevronsRight, label: "Last", onClick: () => handlePageChange(totalPages), disabled: currentPage >= totalPages },
+                  ].map(({ icon: Icon, label, onClick, disabled }) => (
+                    <button
+                      key={label}
+                      onClick={onClick}
+                      disabled={disabled}
+                      title={label}
+                      className={cn(
+                        "h-6.5 w-6.5 inline-flex items-center justify-center rounded-md",
+                        "text-xs transition-all duration-150",
+                        disabled
+                          ? "cursor-not-allowed opacity-30"
+                          : "hover:bg-background hover:shadow-2xs text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      <span className="sr-only">{label}</span>
+                      <Icon className="h-3.5 w-3.5" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Modals */}

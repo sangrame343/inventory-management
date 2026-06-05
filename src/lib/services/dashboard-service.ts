@@ -57,19 +57,19 @@ export async function getDashboardStats(companyId: string) {
     Promise.all([
       db.inventoryItem.count({ where: { companyId } }),
       db.inventoryItem.count({ where: { companyId, status: "INACTIVE" } }),
-      // Low Stock: sum(quantityOnHand) <= minStockLevel
-      db.inventoryItem.findMany({
-        where: { companyId, status: "ACTIVE" },
-        select: {
-          id: true,
-          minStockLevel: true,
-          balances: {
-            select: {
-              quantityOnHand: true,
-            },
-          },
-        },
-      }),
+      // Low Stock: count directly using aggregate raw query
+      db.$queryRaw<[{ count: number }]>`
+        SELECT COALESCE(COUNT(*), 0)::int as count 
+        FROM "InventoryItem" i
+        LEFT JOIN (
+          SELECT "itemId", SUM("quantityOnHand") as total_qty
+          FROM "InventoryBalance"
+          GROUP BY "itemId"
+        ) b ON i.id = b."itemId"
+        WHERE i."companyId" = ${companyId} 
+          AND i.status = 'ACTIVE' 
+          AND COALESCE(b.total_qty, 0) <= i."minStockLevel"
+      `,
     ]),
 
     // Transfers
@@ -164,10 +164,7 @@ export async function getDashboardStats(companyId: string) {
   };
 
   // Process Inventory Low Stock
-  const lowStockItemsCount = inventoryCounts[2].filter((item) => {
-    const totalQty = item.balances.reduce((acc, b) => acc + b.quantityOnHand, 0);
-    return totalQty <= item.minStockLevel;
-  }).length;
+  const lowStockItemsCount = (inventoryCounts[2] as unknown as [{ count: number }])[0]?.count ?? 0;
 
   // Process Maintenance Urgency
   const maintenance = {

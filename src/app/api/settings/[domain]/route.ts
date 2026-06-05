@@ -3,6 +3,8 @@ import { auth } from "@/lib/auth";
 import { domainSchemas } from "@/lib/validations/settings";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { SettingsService } from "@/services/settings-service";
+import { revalidateTag } from "next/cache";
 
 const domainToModel = {
   "asset-categories": "assetCategory",
@@ -38,20 +40,16 @@ export async function GET(
     const isActive = isActiveStr === "true" ? true : isActiveStr === "false" ? false : undefined;
 
     let items;
-    const where = { 
-      companyId: session.user.activeCompanyId,
-      ...(isActive !== undefined ? { isActive } : {})
-    };
-    const orderBy = { name: "asc" as const };
+    const companyId = session.user.activeCompanyId;
 
-    switch (model) {
-      case 'department': items = await db.department.findMany({ where, orderBy }); break;
-      case 'assetCategory': items = await db.assetCategory.findMany({ where, orderBy }); break;
-      case 'vendor': items = await db.vendor.findMany({ where, orderBy }); break;
-      case 'inventoryCategory': items = await db.inventoryCategory.findMany({ where, orderBy }); break;
-      case 'unitOfMeasure': items = await db.unitOfMeasure.findMany({ where, orderBy }); break;
-      case 'inventoryLocation': items = await db.inventoryLocation.findMany({ where, orderBy }); break;
-      default: throw new Error(`Model ${model} not supported for fetch.`);
+    switch (domain) {
+      case 'departments': items = await SettingsService.getDepartments(companyId, isActive); break;
+      case 'asset-categories': items = await SettingsService.getAssetCategories(companyId, isActive); break;
+      case 'vendors': items = await SettingsService.getVendors(companyId, isActive); break;
+      case 'inventory-categories': items = await SettingsService.getInventoryCategories(companyId, isActive); break;
+      case 'units-of-measure': items = await SettingsService.getUnitsOfMeasure(companyId, isActive); break;
+      case 'inventory-locations': items = await SettingsService.getInventoryLocations(companyId, isActive); break;
+      default: throw new Error(`Domain ${domain} not supported for fetch.`);
     }
 
     return NextResponse.json(items);
@@ -103,6 +101,7 @@ export async function POST(
       default: throw new Error(`Model ${model} not supported for creation.`);
     }
 
+    revalidateTag(`${domainParam}-${companyId}`, 'max');
     return NextResponse.json(item, { status: 201 });
   } catch (error: any) {
     if (error instanceof z.ZodError) {

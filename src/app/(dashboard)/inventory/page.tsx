@@ -16,13 +16,52 @@ export const metadata: Metadata = {
   description: "Manage your multi-company inventory.",
 };
 
-export default async function InventoryPage() {
+export default async function InventoryPage(props: {
+  searchParams: Promise<{
+    page?: string;
+    limit?: string;
+    query?: string;
+    categoryId?: string;
+    locationId?: string;
+    sortBy?: string;
+    order?: string;
+  }>;
+}) {
+  const searchParams = await props.searchParams;
   const session = await auth();
   if (!session?.user?.activeCompanyId) redirect("/login");
   const companyId = session.user.activeCompanyId;
 
-  const [items, categories, locations, units, employees, assetCategories, departments, vendors] = await Promise.all([
-    getInventoryItems(),
+  const page = Number(searchParams.page) || 1;
+  const limit = Number(searchParams.limit) || 10;
+  const query = searchParams.query || "";
+  const categoryId = searchParams.categoryId || "";
+  const locationId = searchParams.locationId || "";
+  const sortBy = searchParams.sortBy || "createdAt";
+  const order = (searchParams.order as "asc" | "desc") || "desc";
+
+  const [itemsData, stats, categories, locations, units, employees, assetCategories, departments, vendors] = await Promise.all([
+    getInventoryItems({
+      page,
+      limit,
+      query,
+      categoryId,
+      locationId,
+      sortBy,
+      order,
+    }),
+    Promise.all([
+      db.inventoryItem.count({ where: { companyId } }),
+      db.inventoryItem.count({ where: { companyId, status: "ACTIVE" } }),
+      db.inventoryItem.count({ where: { companyId, availableQuantity: 0 } }),
+      db.$queryRaw<[{ total_qty: number; low_count: number }]>`
+        SELECT 
+          COALESCE(SUM("availableQuantity"), 0)::int as total_qty,
+          COALESCE(COUNT(CASE WHEN "availableQuantity" > 0 AND "availableQuantity" <= "reorderLevel" THEN 1 END), 0)::int as low_count
+        FROM "InventoryItem"
+        WHERE "companyId" = ${companyId}
+      `
+    ]),
     getInventoryCategories(),
     getInventoryLocations(),
     getInventoryUnits(),
@@ -31,6 +70,10 @@ export default async function InventoryPage() {
     db.department.findMany({ where: { companyId }, orderBy: { name: "asc" } }),
     db.vendor.findMany({ where: { companyId }, orderBy: { name: "asc" } }),
   ]);
+
+  const [totalItemsCount, activeItemsCount, outOfStockCount, sqlStats] = stats;
+  const totalVolume = sqlStats[0]?.total_qty || 0;
+  const lowStockCount = sqlStats[0]?.low_count || 0;
 
   return (
     <div className="flex-1 space-y-6 p-8 pt-6">
@@ -44,8 +87,16 @@ export default async function InventoryPage() {
       </div>
       
       <InventoryDashboard
-        initialItems={items}
-        categories={assetCategories.map(c => ({ id: c.id, name: c.name }))}
+        initialItems={itemsData.data}
+        totalCount={itemsData.total}
+        stats={{
+          totalItems: totalItemsCount,
+          activeItems: activeItemsCount,
+          totalVolume,
+          lowStockCount,
+          outOfStockCount,
+        }}
+        categories={categories.map(c => ({ id: c.id, name: c.name }))}
         locations={locations}
         units={units}
         employees={employees.map(e => ({ 

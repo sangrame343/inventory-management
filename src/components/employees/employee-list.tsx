@@ -38,6 +38,10 @@ import {
   UserMinus,
   Clock,
   Sparkles,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -56,10 +60,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
+import { useDebouncedCallback } from "use-debounce"
 
 interface EmployeeListProps {
   employees: any[]
+  totalCount: number
   departments: any[]
   locations: any[]
 }
@@ -157,31 +163,49 @@ function getAvatarHue(str: string) {
   return Math.abs(hash) % 360
 }
 
-export function EmployeeList({ employees, departments, locations }: EmployeeListProps) {
+export function EmployeeList({ employees, totalCount, departments, locations }: EmployeeListProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
 
   // Selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
-  // Search
-  const [searchQuery, setSearchQuery] = useState("")
+  // URL State
+  const currentSortBy = (searchParams.get("sortBy") as SortKey) || "fullName"
+  const currentOrder = (searchParams.get("order") as SortOrder) || "asc"
+  const currentPage = Number(searchParams.get("page")) || 1
+  const pageSize = Number(searchParams.get("limit")) || 10
 
-  // Filters
-  const [statusFilters, setStatusFilters] = useState<string[]>([])
-  const [deptFilter, setDeptFilter] = useState<string | null>(null)
-  const [locFilter, setLocFilter] = useState<string | null>(null)
-  const [quickFilter, setQuickFilter] = useState<string | null>(null)
+  const statusFilters = searchParams.get("status") ? searchParams.get("status")!.split(",").filter(Boolean) : []
+  const deptFilter = searchParams.get("departmentId") || null
+  const locFilter = searchParams.get("locationId") || null
+  const quickFilter = statusFilters.length === 1 ? statusFilters[0] : null
 
-  // Filter panel
+  // Search local state & debounce
+  const [searchQuery, setSearchQuery] = useState(searchParams.get("query") || "")
+
+  const debouncedSearch = useDebouncedCallback((val: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (val.trim()) {
+      params.set("query", val.trim())
+    } else {
+      params.delete("query")
+    }
+    params.set("page", "1")
+    router.push(`/employees?${params.toString()}`)
+  }, 300)
+
+  const handleSearchChange = (val: string) => {
+    setSearchQuery(val)
+    debouncedSearch(val)
+  }
+
+  // Filter panel expanded state
   const [filtersExpanded, setFiltersExpanded] = useState(false)
 
-  // Sorting
-  const [sortConfig, setSortConfig] = useState<{ key: SortKey; order: SortOrder }>({
-    key: "fullName",
-    order: "asc",
-  })
+  const sortConfig = { key: currentSortBy, order: currentOrder }
 
   // Bulk Action States
   const [isBulkConfirmOpen, setIsBulkConfirmOpen] = useState(false)
@@ -199,10 +223,10 @@ export function EmployeeList({ employees, departments, locations }: EmployeeList
   }
 
   const toggleSelectAll = () => {
-    if (selectedIds.size === filteredAndSortedEmployees.length) {
+    if (selectedIds.size === employees.length) {
       setSelectedIds(new Set())
     } else {
-      setSelectedIds(new Set(filteredAndSortedEmployees.map((e) => e.id)))
+      setSelectedIds(new Set(employees.map((e) => e.id)))
     }
   }
 
@@ -215,22 +239,63 @@ export function EmployeeList({ employees, departments, locations }: EmployeeList
   }
 
   const handleSort = (key: SortKey) => {
-    setSortConfig((prev) => ({
-      key,
-      order: prev.key === key && prev.order === "asc" ? "desc" : "asc",
-    }))
+    const params = new URLSearchParams(searchParams.toString())
+    if (currentSortBy === key) {
+      params.set("order", currentOrder === "asc" ? "desc" : "asc")
+    } else {
+      params.set("sortBy", key)
+      params.set("order", "asc")
+    }
+    params.set("page", "1")
+    router.push(`/employees?${params.toString()}`)
   }
 
-  const toggleStatusFilter = (status: string) => {
-    setQuickFilter(null)
-    setStatusFilters((prev) =>
-      prev.includes(status) ? prev.filter((s) => s !== status) : [...prev, status]
-    )
+  const toggleStatusFilter = (statusVal: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    const current = params.get("status") ? params.get("status")!.split(",").filter(Boolean) : []
+    const updated = current.includes(statusVal)
+      ? current.filter((s) => s !== statusVal)
+      : [...current, statusVal]
+    if (updated.length > 0) {
+      params.set("status", updated.join(","))
+    } else {
+      params.delete("status")
+    }
+    params.set("page", "1")
+    router.push(`/employees?${params.toString()}`)
   }
 
   const applyQuickFilter = (value: string | null) => {
-    setQuickFilter(value)
-    setStatusFilters([])
+    const params = new URLSearchParams(searchParams.toString())
+    if (value) {
+      params.set("status", value)
+    } else {
+      params.delete("status")
+    }
+    params.set("page", "1")
+    router.push(`/employees?${params.toString()}`)
+  }
+
+  const applyDeptFilter = (id: string | null) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (id) {
+      params.set("departmentId", id)
+    } else {
+      params.delete("departmentId")
+    }
+    params.set("page", "1")
+    router.push(`/employees?${params.toString()}`)
+  }
+
+  const applyLocFilter = (id: string | null) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (id) {
+      params.set("locationId", id)
+    } else {
+      params.delete("locationId")
+    }
+    params.set("page", "1")
+    router.push(`/employees?${params.toString()}`)
   }
 
   const totalActiveFilters =
@@ -240,65 +305,24 @@ export function EmployeeList({ employees, departments, locations }: EmployeeList
 
   const clearAllFilters = () => {
     setSearchQuery("")
-    setStatusFilters([])
-    setDeptFilter(null)
-    setLocFilter(null)
-    setQuickFilter(null)
+    router.push("/employees")
   }
 
-  const filteredAndSortedEmployees = useMemo(() => {
-    let result = [...employees]
+  const totalPages = Math.ceil(totalCount / pageSize) || 1
+  const activePage = Math.min(currentPage, totalPages)
 
-    // Quick filter
-    if (quickFilter) {
-      result = result.filter((e) => e.status === quickFilter)
-    }
+  const handlePageChange = (newPage: number) => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set("page", newPage.toString())
+    router.push(`/employees?${params.toString()}`)
+  }
 
-    // Search
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase()
-      result = result.filter(
-        (e) =>
-          e.fullName.toLowerCase().includes(q) ||
-          e.employeeCode.toLowerCase().includes(q) ||
-          (e.email && e.email.toLowerCase().includes(q)) ||
-          (e.phone && e.phone.toLowerCase().includes(q)) ||
-          (e.designation && e.designation.toLowerCase().includes(q))
-      )
-    }
-
-    // Status multi-filter
-    if (statusFilters.length > 0) {
-      result = result.filter((e) => statusFilters.includes(e.status))
-    }
-
-    // Dept filter
-    if (deptFilter) result = result.filter((e) => e.departmentId === deptFilter)
-
-    // Loc filter
-    if (locFilter) result = result.filter((e) => e.locationId === locFilter)
-
-    // Sort
-    result.sort((a, b) => {
-      let valA: any = ""
-      let valB: any = ""
-
-      switch (sortConfig.key) {
-        case "fullName": valA = a.fullName; valB = b.fullName; break
-        case "employeeCode": valA = a.employeeCode; valB = b.employeeCode; break
-        case "department": valA = a.department?.name || ""; valB = b.department?.name || ""; break
-        case "location": valA = a.location?.name || ""; valB = b.location?.name || ""; break
-        case "joiningDate": valA = new Date(a.joiningDate).getTime(); valB = new Date(b.joiningDate).getTime(); break
-        case "status": valA = a.status; valB = b.status; break
-      }
-
-      if (valA < valB) return sortConfig.order === "asc" ? -1 : 1
-      if (valA > valB) return sortConfig.order === "asc" ? 1 : -1
-      return 0
-    })
-
-    return result
-  }, [employees, searchQuery, statusFilters, deptFilter, locFilter, quickFilter, sortConfig])
+  const handlePageSizeChange = (newSize: number) => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set("limit", newSize.toString())
+    params.set("page", "1")
+    router.push(`/employees?${params.toString()}`)
+  }
 
   const handleBulkAction = async () => {
     if (!bulkActionType) return
@@ -397,12 +421,16 @@ export function EmployeeList({ employees, departments, locations }: EmployeeList
             placeholder="Search name, code, email, designation…"
             className="pl-10 pr-10 h-10 rounded-xl border-border/60 bg-card shadow-sm text-sm focus-visible:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/10 transition-all duration-200"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              handleSearchChange(e.target.value)
+            }}
           />
           {searchQuery && (
             <button
               type="button"
-              onClick={() => setSearchQuery("")}
+              onClick={() => {
+                handleSearchChange("")
+              }}
               className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground/60 hover:text-foreground hover:bg-muted/80 transition-all duration-150"
             >
               <X className="h-3.5 w-3.5" />
@@ -491,7 +519,13 @@ export function EmployeeList({ employees, departments, locations }: EmployeeList
                         "rounded-lg flex items-center gap-2 py-2 px-2.5 cursor-pointer",
                         isActive && "bg-primary/[0.07] text-primary"
                       )}
-                      onClick={() => setSortConfig({ key: opt.value, order: opt.order })}
+                      onClick={() => {
+                        const params = new URLSearchParams(searchParams.toString())
+                        params.set("sortBy", opt.value)
+                        params.set("order", opt.order)
+                        params.set("page", "1")
+                        router.push(`/employees?${params.toString()}`)
+                      }}
                     >
                       <Icon className="h-3.5 w-3.5 shrink-0 opacity-50" />
                       <span className="flex-1 text-[13px]">{opt.label}</span>
@@ -585,7 +619,9 @@ export function EmployeeList({ employees, departments, locations }: EmployeeList
                   {menuLabel("Filter by Department")}
                   <DropdownMenuSeparator className="my-1 opacity-50" />
                   <DropdownMenuItem
-                    onClick={() => setDeptFilter(null)}
+                    onClick={() => {
+                      applyDeptFilter(null)
+                    }}
                     className="rounded-lg flex items-center justify-between py-1.5 cursor-pointer"
                   >
                     All Departments
@@ -595,7 +631,9 @@ export function EmployeeList({ employees, departments, locations }: EmployeeList
                     <DropdownMenuItem
                       key={d.id}
                       className="rounded-lg flex items-center justify-between py-1.5 cursor-pointer"
-                      onClick={() => setDeptFilter(d.id)}
+                      onClick={() => {
+                        applyDeptFilter(d.id)
+                      }}
                     >
                       {d.name}
                       {deptFilter === d.id && <Check className="h-3.5 w-3.5 text-primary" />}
@@ -616,7 +654,9 @@ export function EmployeeList({ employees, departments, locations }: EmployeeList
                   {menuLabel("Filter by Location")}
                   <DropdownMenuSeparator className="my-1 opacity-50" />
                   <DropdownMenuItem
-                    onClick={() => setLocFilter(null)}
+                    onClick={() => {
+                      applyLocFilter(null)
+                    }}
                     className="rounded-lg flex items-center justify-between py-1.5 cursor-pointer"
                   >
                     All Locations
@@ -626,7 +666,9 @@ export function EmployeeList({ employees, departments, locations }: EmployeeList
                     <DropdownMenuItem
                       key={l.id}
                       className="rounded-lg flex items-center justify-between py-1.5 cursor-pointer"
-                      onClick={() => setLocFilter(l.id)}
+                      onClick={() => {
+                        applyLocFilter(l.id)
+                      }}
                     >
                       {l.name}
                       {locFilter === l.id && <Check className="h-3.5 w-3.5 text-primary" />}
@@ -668,7 +710,7 @@ export function EmployeeList({ employees, departments, locations }: EmployeeList
               <span className="max-w-[140px] truncate">&ldquo;{searchQuery}&rdquo;</span>
               <button
                 type="button"
-                onClick={() => setSearchQuery("")}
+                onClick={() => handleSearchChange("")}
                 className="rounded-full p-0.5 text-muted-foreground/40 hover:text-foreground hover:bg-muted transition-all"
               >
                 <X className="h-3 w-3" />
@@ -682,7 +724,7 @@ export function EmployeeList({ employees, departments, locations }: EmployeeList
               {quickFilters.find((q) => q.value === quickFilter)?.label || quickFilter}
               <button
                 type="button"
-                onClick={() => setQuickFilter(null)}
+                onClick={() => applyQuickFilter(null)}
                 className="rounded-full p-0.5 text-primary/40 hover:text-primary hover:bg-primary/10 transition-all"
               >
                 <X className="h-3 w-3" />
@@ -704,8 +746,8 @@ export function EmployeeList({ employees, departments, locations }: EmployeeList
                 type="button"
                 onClick={() => {
                   if (chip.key === "status" && chip.value) toggleStatusFilter(chip.value)
-                  else if (chip.key === "dept") setDeptFilter(null)
-                  else if (chip.key === "loc") setLocFilter(null)
+                  else if (chip.key === "dept") applyDeptFilter(null)
+                  else if (chip.key === "loc") applyLocFilter(null)
                 }}
                 className="rounded-full p-0.5 text-primary/40 hover:text-primary hover:bg-primary/10 transition-all"
               >
@@ -725,7 +767,7 @@ export function EmployeeList({ employees, departments, locations }: EmployeeList
             <TableRow className="bg-muted/20 border-b border-border/40 hover:bg-muted/20">
               <TableHead className="w-[44px] pl-4">
                 <Checkbox
-                  checked={selectedIds.size > 0 && selectedIds.size === filteredAndSortedEmployees.length}
+                  checked={selectedIds.size > 0 && selectedIds.size === employees.length}
                   onChange={toggleSelectAll}
                 />
               </TableHead>
@@ -771,7 +813,7 @@ export function EmployeeList({ employees, departments, locations }: EmployeeList
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredAndSortedEmployees.length === 0 ? (
+            {employees.length === 0 ? (
               <TableRow className="hover:bg-transparent">
                 <TableCell colSpan={9} className="h-48">
                   <div className="flex flex-col items-center justify-center gap-3 text-center py-8">
@@ -794,7 +836,7 @@ export function EmployeeList({ employees, departments, locations }: EmployeeList
                 </TableCell>
               </TableRow>
             ) : (
-              filteredAndSortedEmployees.map((employee) => {
+              employees.map((employee) => {
                 const statusCfg = STATUS_CONFIG[employee.status] || STATUS_CONFIG["INACTIVE"]
                 const hue = getAvatarHue(employee.id)
                 const isSelected = selectedIds.has(employee.id)
@@ -930,21 +972,82 @@ export function EmployeeList({ employees, departments, locations }: EmployeeList
           </TableBody>
         </Table>
 
-        {/* Table footer summary */}
-        {filteredAndSortedEmployees.length > 0 && (
-          <div className="flex items-center justify-between px-4 py-2.5 border-t border-border/30 bg-muted/10">
-            <span className="text-[11px] text-muted-foreground/60">
-              Showing{" "}
-              <span className="font-semibold text-foreground/70">{filteredAndSortedEmployees.length}</span>
-              {" "}of{" "}
-              <span className="font-semibold text-foreground/70">{employees.length}</span>
-              {" "}employees
-            </span>
-            {selectedIds.size > 0 && (
-              <span className="text-[11px] font-semibold text-primary">
-                {selectedIds.size} selected
+        {/* Table footer summary with Pagination controls */}
+        {totalCount > 0 && (
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 py-3 border-t border-border/30 bg-muted/10">
+            <div className="flex flex-wrap items-center gap-2 order-2 sm:order-1">
+              <span className="text-[11px] text-muted-foreground/60">
+                Showing{" "}
+                <span className="font-semibold text-foreground/70 tabular-nums">
+                  {totalCount === 0 ? 0 : (activePage - 1) * pageSize + 1}
+                  –
+                  {Math.min(activePage * pageSize, totalCount)}
+                </span>
+                {" "}of{" "}
+                <span className="font-semibold text-foreground/70 tabular-nums">{totalCount}</span>
+                {" "}employees
               </span>
-            )}
+              {selectedIds.size > 0 && (
+                <>
+                  <span className="text-muted-foreground/30 text-xs">•</span>
+                  <span className="text-[11px] font-semibold text-primary">
+                    {selectedIds.size} selected
+                  </span>
+                </>
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-4 order-1 sm:order-2">
+              {/* Rows per page selector */}
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-muted-foreground">Rows per page</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    handlePageSizeChange(Number(e.target.value))
+                  }}
+                  className="h-7 rounded-lg border border-border/40 bg-card px-2 py-0.5 text-xs shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors cursor-pointer"
+                >
+                  {[10, 25, 50, 100].map((ps) => (
+                    <option key={ps} value={ps}>
+                      {ps}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Page navigation */}
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-muted-foreground min-w-[50px] text-center tabular-nums">
+                  {activePage} / {totalPages}
+                </span>
+                <div className="flex items-center gap-0.5 bg-muted/30 rounded-lg p-0.5 border border-border/40 shadow-3xs">
+                  {[
+                    { icon: ChevronsLeft, label: "First", onClick: () => handlePageChange(1), disabled: activePage <= 1 },
+                    { icon: ChevronLeft, label: "Previous", onClick: () => handlePageChange(activePage - 1), disabled: activePage <= 1 },
+                    { icon: ChevronRight, label: "Next", onClick: () => handlePageChange(activePage + 1), disabled: activePage >= totalPages },
+                    { icon: ChevronsRight, label: "Last", onClick: () => handlePageChange(totalPages), disabled: activePage >= totalPages },
+                  ].map(({ icon: Icon, label, onClick, disabled }) => (
+                    <button
+                      key={label}
+                      onClick={onClick}
+                      disabled={disabled}
+                      title={label}
+                      className={cn(
+                        "h-6.5 w-6.5 inline-flex items-center justify-center rounded-md",
+                        "text-xs transition-all duration-150",
+                        disabled
+                          ? "cursor-not-allowed opacity-30"
+                          : "hover:bg-background hover:shadow-2xs text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      <span className="sr-only">{label}</span>
+                      <Icon className="h-3.5 w-3.5" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
