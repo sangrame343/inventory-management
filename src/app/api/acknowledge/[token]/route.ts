@@ -122,7 +122,10 @@ async function generatePDFReceipt(data: {
     color: rgb(0.9, 0.92, 0.94),
   });
 
-  drawField(page, "Assignee Name:", data.assigneeName, 50, 685, font, boldFont);
+  const displayAssignee = data.assigneeName.length > 30
+    ? data.assigneeName.substring(0, 27) + "..."
+    : data.assigneeName;
+  drawField(page, "Assignee Name:", displayAssignee, 50, 685, font, boldFont);
   drawField(page, "Department:", data.departmentName || "General", 300, 685, font, boldFont);
   drawField(page, "Assigned Location:", data.locationName || "General Office", 50, 665, font, boldFont);
   drawField(page, "Date Assigned:", data.assignedDate.toLocaleDateString(undefined, { dateStyle: "long" }), 300, 665, font, boldFont);
@@ -142,7 +145,10 @@ async function generatePDFReceipt(data: {
     color: rgb(0.9, 0.92, 0.94),
   });
 
-  drawField(page, "Asset Name:", data.assetName, 50, 605, font, boldFont);
+  const displayName = data.assetName.length > 30
+    ? data.assetName.substring(0, 27) + "..."
+    : data.assetName;
+  drawField(page, "Asset Name:", displayName, 50, 605, font, boldFont);
   drawField(page, "Asset Tag ID:", data.assetTag, 300, 605, font, boldFont);
   drawField(page, "Asset Code:", data.assetCode || "—", 50, 585, font, boldFont);
   drawField(page, "Brand Name:", data.brand || "—", 300, 585, font, boldFont);
