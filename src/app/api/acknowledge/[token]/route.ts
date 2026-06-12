@@ -128,7 +128,7 @@ async function generatePDFReceipt(data: {
   drawField(page, "Assignee Name:", displayAssignee, 50, 685, font, boldFont);
   drawField(page, "Department:", data.departmentName || "General", 300, 685, font, boldFont);
   drawField(page, "Assigned Location:", data.locationName || "General Office", 50, 665, font, boldFont);
-  drawField(page, "Date Assigned:", data.assignedDate.toLocaleDateString(undefined, { dateStyle: "long" }), 300, 665, font, boldFont);
+  drawField(page, "Date Assigned:", data.assignedDate.toLocaleDateString("en-IN", { dateStyle: "long", timeZone: "Asia/Kolkata" }), 300, 665, font, boldFont);
 
   // Section 2: Asset Details
   page.drawText("ASSET DETAILS", {
@@ -228,7 +228,7 @@ async function generatePDFReceipt(data: {
   });
 
   drawField(page, "Authorized Signer:", data.signerName, 50, 290, font, boldFont);
-  drawField(page, "Sign-off Timestamp:", data.timestamp.toLocaleString(undefined, { dateStyle: "long", timeStyle: "medium" }), 50, 270, font, boldFont);
+  drawField(page, "Sign-off Timestamp:", data.timestamp.toLocaleString("en-IN", { dateStyle: "long", timeStyle: "medium", timeZone: "Asia/Kolkata" }), 50, 270, font, boldFont);
 
   try {
     const signatureImage = await pdfDoc.embedPng(data.signatureBuffer);
