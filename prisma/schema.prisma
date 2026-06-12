@@ -98,6 +98,9 @@ enum HandoverType {
   NEW_HIRE
   REPLACEMENT
   TEMPORARY_LOAN
+  NEW_ASSET_ASSIGN
+  ASSET_UPDATE
+  ASSIGNED_TO_DEPARTMENT
 }
 
 enum PhysicalCondition {
@@ -267,6 +270,8 @@ model Company {
   maintenanceSchedules  MaintenanceSchedule[]
   employees             Employee[]
   approvalRequests      ApprovalRequest[]
+  acknowledgements      AssetAcknowledgement[]
+  acknowledgementBatches EmployeeAssetAcknowledgementBatch[]
 }
 
 model CompanyUser {
@@ -432,6 +437,7 @@ model Asset {
   transfers            AssetTransfer[]
   inventoryIssues      InventoryTransaction[] @relation("issuedToAsset")
   maintenanceSchedules MaintenanceSchedule[]
+  batchItems           EmployeeAssetAcknowledgementItem[]
 
   @@unique([companyId, assetTag])
   @@unique([companyId, assetCode])
@@ -484,6 +490,9 @@ model AssetAssignment {
   location   Location?   @relation(fields: [locationId], references: [id])
   assignedBy User        @relation("assignedByAdmin", fields: [assignedById], references: [id])
   manager    User?       @relation("managerUser", fields: [managerUserId], references: [id])
+
+  acknowledgement AssetAcknowledgement?
+  batchItems      EmployeeAssetAcknowledgementItem[]
 
   @@index([companyId])
   @@index([assetId])
@@ -631,6 +640,7 @@ model Employee {
   transfersTo   AssetTransfer[] @relation("transferToEmployee")
 
   inventoryAssignments InventoryAssignment[]
+  acknowledgementBatches EmployeeAssetAcknowledgementBatch[]
 
   @@unique([companyId, employeeCode])
   @@index([companyId])
@@ -953,3 +963,116 @@ model InventoryAdjustment {
   @@index([itemId])
   @@index([locationId])
 }
+
+enum AcknowledgementStatus {
+  PENDING
+  ACKNOWLEDGED
+  EXPIRED
+  ARCHIVED
+  DELETED
+}
+
+model AssetAcknowledgement {
+  id                    String                @id @default(cuid())
+  assignmentId          String                @unique
+  companyId             String
+  
+  // Security token configuration
+  tokenHash             String                @unique // SHA-256 of the token for verification
+  tokenExpiresAt        DateTime?
+  status                AcknowledgementStatus @default(PENDING)
+  usedAt                DateTime?
+  archivedAt            DateTime?
+  deletedAt             DateTime?
+  
+  // User Input Fields
+  acknowledgedByName    String?               // Typed name of employee (if employee assignment)
+  representativeName    String?               // Typed name of department representative (if department assignment)
+  signaturePath         String?               // Path in 'asset-signatures' private bucket
+  pdfReceiptPath        String?               // Path in 'asset-receipts' private bucket
+  
+  // Legal/Audit Snapshots (to preserve historical state)
+  assetNameSnapshot     String
+  assetCodeSnapshot     String?
+  assetTagSnapshot      String
+  conditionSnapshot     String?
+  assigneeNameSnapshot  String                // Employee name or Department name
+  assignedDateSnapshot  DateTime
+  
+  // Audit Trail fields
+  ipAddress             String?
+  userAgent             String?
+  browserName           String?
+  deviceType            String?               // desktop, mobile, tablet
+  termsAccepted         Boolean               @default(false)
+  
+  // Relationships
+  assignment            AssetAssignment       @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  company               Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  @@index([companyId])
+  @@index([tokenHash])
+}
+
+model EmployeeAssetAcknowledgementBatch {
+  id                    String                @id @default(cuid())
+  employeeId            String
+  companyId             String
+  
+  // Security token configuration
+  tokenHash             String                @unique // SHA-256 of the token for verification
+  tokenExpiresAt        DateTime
+  status                AcknowledgementStatus @default(PENDING)
+  usedAt                DateTime?
+  viewedAt              DateTime?
+  
+  // User Input Fields
+  acknowledgedByName    String?               // Typed name of employee
+  representativeName    String?               // Typed name of representative
+  signaturePath         String?               // Path in 'asset-signatures' private bucket
+  pdfReceiptPath        String?               // Path in 'asset-receipts' private bucket
+  
+  // Audit Trail fields
+  ipAddress             String?
+  userAgent             String?
+  browserName           String?
+  deviceType            String?               // desktop, mobile, tablet
+  termsAccepted         Boolean               @default(false)
+  
+  // Relationships
+  employee              Employee              @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  company               Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  items                 EmployeeAssetAcknowledgementItem[]
+  
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  @@index([companyId])
+  @@index([tokenHash])
+}
+
+model EmployeeAssetAcknowledgementItem {
+  id                    String                            @id @default(cuid())
+  batchId               String
+  assignmentId          String
+  assetId               String
+  
+  // Snapshots (frozen for audit trail)
+  assetNameSnapshot     String
+  assetCodeSnapshot     String?
+  assetTagSnapshot      String
+  conditionSnapshot     String?
+  assignedDateSnapshot  DateTime
+  
+  // Relationships
+  batch                 EmployeeAssetAcknowledgementBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  assignment            AssetAssignment                   @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  asset                 Asset                             @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([batchId])
+}
+
+

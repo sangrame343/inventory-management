@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { AssetStatus, FunctionalStatus, PhysicalCondition, HandoverType, Prisma } from "@prisma/client";
+import { generateAcknowledgementToken, hashAcknowledgementToken } from "@/lib/crypto-utils";
 
 export class AssignmentService {
   static async assignAsset(
@@ -74,7 +75,55 @@ export class AssignmentService {
         },
       });
 
-      // 3. Update asset status and condition
+      // 3. Fetch asset details for snapshotting
+      const assetDetails = await tx.asset.findUnique({
+        where: { id: assetId },
+        select: { name: true, assetCode: true, assetTag: true, condition: true },
+      });
+      if (!assetDetails) {
+        throw new Error("Asset not found");
+      }
+
+      // 4. Fetch assignee details for snapshotting
+      let assigneeNameSnapshot = "";
+      if (data.employeeId) {
+        const employee = await tx.employee.findUnique({
+          where: { id: data.employeeId },
+          select: { fullName: true },
+        });
+        assigneeNameSnapshot = employee?.fullName || "Employee";
+      } else if (data.departmentId) {
+        const department = await tx.department.findUnique({
+          where: { id: data.departmentId },
+          select: { name: true },
+        });
+        assigneeNameSnapshot = department?.name || "Department";
+      }
+
+      // 5. Generate secure acknowledgement token
+      const rawToken = generateAcknowledgementToken();
+      const tokenHash = hashAcknowledgementToken(rawToken);
+      const tokenExpiresAt = new Date();
+      tokenExpiresAt.setDate(tokenExpiresAt.getDate() + 7); // Valid for 7 days
+
+      // 6. Create acknowledgement ledger entry
+      await tx.assetAcknowledgement.create({
+        data: {
+          assignmentId: assignment.id,
+          companyId,
+          tokenHash,
+          tokenExpiresAt,
+          status: "PENDING",
+          assetNameSnapshot: assetDetails.name,
+          assetCodeSnapshot: assetDetails.assetCode,
+          assetTagSnapshot: assetDetails.assetTag,
+          conditionSnapshot: data.physicalCondition || assetDetails.condition || "GOOD",
+          assigneeNameSnapshot,
+          assignedDateSnapshot: data.handoverDate || new Date(),
+        },
+      });
+
+      // 7. Update asset status and condition
       await tx.asset.update({
         where: { id: assetId },
         data: { 
@@ -84,7 +133,7 @@ export class AssignmentService {
         },
       });
 
-      // 4. Log activity
+      // 8. Log activity
       await tx.activityLog.create({
         data: {
           companyId,
@@ -101,7 +150,10 @@ export class AssignmentService {
         },
       });
 
-      return assignment;
+      return {
+        ...assignment,
+        rawAcknowledgementToken: rawToken,
+      };
     };
 
     if (prisma === db) {

@@ -7,8 +7,11 @@ export default auth((req) => {
   const isLoggedIn = !!req.auth;
   const isAuthPage = req.nextUrl.pathname.startsWith("/login") || req.nextUrl.pathname.startsWith("/register");
   const isApiAuthRoute = req.nextUrl.pathname.startsWith("/api/auth");
+  const isPublicAcknowledgeRoute = 
+    req.nextUrl.pathname.startsWith("/acknowledge") || 
+    req.nextUrl.pathname.startsWith("/api/acknowledge");
 
-  if (isApiAuthRoute) return;
+  if (isApiAuthRoute || isPublicAcknowledgeRoute) return;
 
   if (req.nextUrl.pathname === "/") {
     return Response.redirect(new URL("/dashboard", req.nextUrl));

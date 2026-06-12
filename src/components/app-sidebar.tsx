@@ -44,6 +44,7 @@ const mainNav = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Assets", url: "/assets", icon: Package },
   { title: "Inventory", url: "/inventory", icon: Boxes },
+  { title: "Acknowledgements", url: "/acknowledgements", icon: ShieldCheck },
   { title: "Maintenance", url: "/maintenance", icon: Wrench },
   { title: "Employees", url: "/employees", icon: Users },
   { title: "Transfers", url: "/transfers", icon: Activity },

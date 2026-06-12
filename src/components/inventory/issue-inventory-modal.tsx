@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -22,6 +22,7 @@ import { issueInventoryToEmployee } from "@/app/actions/inventory-transaction-ac
 import { toast } from "sonner";
 
 import type { InventoryLocation, InventoryItem } from "@prisma/client";
+import { SearchableSelector } from "@/components/ui/searchable-selector";
 
 interface Option {
   id: string;
@@ -81,6 +82,14 @@ export function IssueInventoryModal({
   // Additional general asset/handover fields:
   const [handoverDate, setHandoverDate] = useState(new Date().toISOString().slice(0, 10));
   const [handoverType, setHandoverType] = useState("NEW_HIRE");
+
+  useEffect(() => {
+    if (assignmentType === "DEPARTMENT") {
+      setHandoverType("ASSIGNED_TO_DEPARTMENT");
+    } else if (assignmentType === "EMPLOYEE") {
+      setHandoverType("NEW_HIRE");
+    }
+  }, [assignmentType]);
   const [managerUserId, setManagerUserId] = useState("");
   const [issuingOfficerName, setIssuingOfficerName] = useState("");
   const [employeeSignatureName, setEmployeeSignatureName] = useState("");
@@ -296,40 +305,33 @@ export function IssueInventoryModal({
             {assignmentType === "EMPLOYEE" && (
               <div className="space-y-2">
                 <Label>Employee</Label>
-                <Select value={targetEmployeeId} onValueChange={(val) => setTargetEmployeeId(val ?? "")}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select employee">
-                      {employees.find(emp => emp.id === targetEmployeeId)?.name}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {employees.map((emp) => (
-                      <SelectItem key={emp.id} value={emp.id}>
-                        {emp.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelector
+                  options={employees.map((emp) => ({
+                    value: emp.id,
+                    label: emp.name,
+                    description: emp.employeeId ? `ID: ${emp.employeeId}` : undefined,
+                  }))}
+                  value={targetEmployeeId}
+                  onSelect={(val) => setTargetEmployeeId(val ?? "")}
+                  placeholder="Select employee..."
+                  searchPlaceholder="Search employee..."
+                />
               </div>
             )}
 
             {assignmentType === "DEPARTMENT" && (
               <div className="space-y-2">
                 <Label>Department</Label>
-                <Select value={targetDepartmentId} onValueChange={(val) => setTargetDepartmentId(val ?? "")}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select department">
-                      {departments.find(d => d.id === targetDepartmentId)?.name}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {departments.map((dept) => (
-                      <SelectItem key={dept.id} value={dept.id}>
-                        {dept.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelector
+                  options={departments.map((dept) => ({
+                    value: dept.id,
+                    label: dept.name,
+                  }))}
+                  value={targetDepartmentId}
+                  onSelect={(val) => setTargetDepartmentId(val ?? "")}
+                  placeholder="Select department..."
+                  searchPlaceholder="Search department..."
+                />
               </div>
             )}
 
@@ -408,13 +410,19 @@ export function IssueInventoryModal({
                           <SelectValue placeholder="Select handover type">
                             {handoverType === "NEW_HIRE" ? "New Hire" : 
                              handoverType === "REPLACEMENT" ? "Replacement" : 
-                             handoverType === "TEMPORARY_LOAN" ? "Temporary Loan" : null}
+                             handoverType === "TEMPORARY_LOAN" ? "Temporary Loan" : 
+                             handoverType === "NEW_ASSET_ASSIGN" ? "New Asset Assign" :
+                             handoverType === "ASSET_UPDATE" ? "Asset Update" :
+                             handoverType === "ASSIGNED_TO_DEPARTMENT" ? "Assigned to Department" : null}
                           </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="NEW_HIRE">New Hire</SelectItem>
                           <SelectItem value="REPLACEMENT">Replacement</SelectItem>
                           <SelectItem value="TEMPORARY_LOAN">Temporary Loan</SelectItem>
+                          <SelectItem value="NEW_ASSET_ASSIGN">New Asset Assign</SelectItem>
+                          <SelectItem value="ASSET_UPDATE">Asset Update</SelectItem>
+                          <SelectItem value="ASSIGNED_TO_DEPARTMENT">Assigned to Department</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

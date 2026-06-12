@@ -171,6 +171,7 @@ export class EmployeeService {
                 category: true,
               }
             },
+            acknowledgement: true,
           },
           orderBy: { assignedAt: "desc" },
         },

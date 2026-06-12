@@ -2,23 +2,13 @@
 
 import { useEffect, useState } from "react"
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from "@/components/ui/sheet"
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
@@ -28,19 +18,59 @@ import {
   MapPin,
   Building2,
   Briefcase,
-  ExternalLink,
   Package,
   Printer,
   Download,
+  Link2,
+  Loader2,
+  History,
+  User2,
+  CheckCircle2,
+  Clock,
+  XCircle,
+  Tag,
+  CalendarDays,
+  Info,
+  ChevronRight,
 } from "lucide-react"
 import { format } from "date-fns"
 import { Skeleton } from "@/components/ui/skeleton"
+import { toast } from "sonner"
 
 interface EmployeeDetailsSheetProps {
   employeeId: string | null
   isOpen: boolean
   onOpenChange: (open: boolean) => void
 }
+
+const AVATAR_PALETTES = [
+  "from-violet-500 to-indigo-600",
+  "from-emerald-500 to-teal-600",
+  "from-amber-500 to-orange-600",
+  "from-rose-500 to-pink-600",
+  "from-sky-500 to-blue-600",
+  "from-fuchsia-500 to-purple-600",
+]
+
+const STATUS_CONFIG: Record<string, { label: string; badge: string; dot: string }> = {
+  ACTIVE:      { label: "Active",      dot: "bg-emerald-400", badge: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-800/50" },
+  INACTIVE:    { label: "Inactive",    dot: "bg-slate-400",   badge: "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700" },
+  ON_LEAVE:    { label: "On Leave",    dot: "bg-amber-400",   badge: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-800/50" },
+  ON_HOLD:     { label: "On Hold",     dot: "bg-orange-400",  badge: "bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/30 dark:text-orange-300 dark:border-orange-800/50" },
+  RESIGNED:    { label: "Resigned",    dot: "bg-rose-400",    badge: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-300 dark:border-rose-800/50" },
+  LEFT:        { label: "Left",        dot: "bg-rose-400",    badge: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-300 dark:border-rose-800/50" },
+  TERMINATED:  { label: "Terminated",  dot: "bg-red-500",     badge: "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-300 dark:border-red-800/50" },
+}
+
+const CONDITION_CONFIG: Record<string, string> = {
+  EXCELLENT: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300",
+  GOOD:      "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-300",
+  FAIR:      "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-300",
+  POOR:      "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-300",
+  DAMAGED:   "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-300",
+}
+
+type Tab = "info" | "assets" | "history"
 
 export function EmployeeDetailsSheet({
   employeeId,
@@ -50,12 +80,14 @@ export function EmployeeDetailsSheet({
   const [data, setData] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isError, setIsError] = useState(false)
+  const [generatingLink, setGeneratingLink] = useState(false)
+  const [activeTab, setActiveTab] = useState<Tab>("info")
 
   useEffect(() => {
     if (isOpen && employeeId) {
+      setActiveTab("info")
       fetchEmployeeDetails(employeeId)
     } else if (!isOpen) {
-      // Delay clearing data to avoid pop-in/out during animation
       const timer = setTimeout(() => setData(null), 300)
       return () => clearTimeout(timer)
     }
@@ -77,19 +109,26 @@ export function EmployeeDetailsSheet({
     }
   }
 
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .substring(0, 2)
+  const getInitials = (name: string) =>
+    name.split(" ").map((n) => n[0]).join("").toUpperCase().substring(0, 2)
+
+  const avatarGradient =
+    AVATAR_PALETTES[(data?.fullName?.charCodeAt(0) ?? 0) % AVATAR_PALETTES.length]
+
+  const statusCfg = STATUS_CONFIG[data?.status] ?? {
+    label: data?.status ?? "",
+    dot: "bg-slate-400",
+    badge: "bg-slate-100 text-slate-600 border-slate-200",
   }
 
+  const hasPendingHandovers = data?.assignments?.some(
+    (a: any) => !a.acknowledgement || a.acknowledgement.status !== "ACKNOWLEDGED"
+  )
+
   const handlePrint = () => {
-    if (!data) return;
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) return;
+    if (!data) return
+    const printWindow = window.open("", "_blank")
+    if (!printWindow) return
 
     const html = `
       <html>
@@ -98,9 +137,7 @@ export function EmployeeDetailsSheet({
           <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
           <style>
             body { font-family: sans-serif; background: white; color: black; padding: 40px; }
-            @media print {
-              body { padding: 20px; }
-            }
+            @media print { body { padding: 20px; } }
           </style>
         </head>
         <body>
@@ -114,10 +151,8 @@ export function EmployeeDetailsSheet({
               <div class="text-right">
                 <h2 class="text-lg font-bold text-gray-800 uppercase tracking-wide">Employee Asset Report</h2>
                 <p class="text-xs text-gray-500 mt-1">Generated: ${new Date().toLocaleDateString()}</p>
-                <p class="text-xs text-gray-500">Status: ${data.status}</p>
               </div>
             </div>
-            
             <div class="grid grid-cols-2 gap-6 mb-8 text-sm">
               <div class="border border-gray-200 p-4 rounded">
                 <h3 class="font-bold text-gray-800 border-b pb-1 mb-2">Profile Details</h3>
@@ -132,70 +167,31 @@ export function EmployeeDetailsSheet({
                 <p class="py-1"><span class="font-semibold text-gray-600">Joining Date:</span> ${data.joiningDate ? new Date(data.joiningDate).toLocaleDateString() : "N/A"}</p>
               </div>
             </div>
-
             <div class="mb-8">
               <h3 class="text-base font-bold text-gray-800 border-b-2 border-gray-200 pb-1 mb-3">Currently Assigned Assets (${data.assignments?.length || 0})</h3>
               ${data.assignments && data.assignments.length > 0 ? `
                 <table class="w-full text-left border-collapse text-xs border border-gray-200">
-                  <thead>
-                    <tr class="border-b bg-gray-50">
-                      <th class="py-2 px-3 font-semibold text-gray-700">Asset Name</th>
-                      <th class="py-2 px-3 font-semibold text-gray-700">Asset Tag/Code</th>
-                      <th class="py-2 px-3 font-semibold text-gray-700">Category</th>
-                      <th class="py-2 px-3 font-semibold text-gray-700">Brand/Model</th>
-                      <th class="py-2 px-3 font-semibold text-gray-700">Condition</th>
-                      <th class="py-2 px-3 font-semibold text-gray-700">Assigned Date</th>
-                    </tr>
-                  </thead>
+                  <thead><tr class="border-b bg-gray-50">
+                    <th class="py-2 px-3 font-semibold text-gray-700">Asset Name</th>
+                    <th class="py-2 px-3 font-semibold text-gray-700">Tag/Code</th>
+                    <th class="py-2 px-3 font-semibold text-gray-700">Category</th>
+                    <th class="py-2 px-3 font-semibold text-gray-700">Brand/Model</th>
+                    <th class="py-2 px-3 font-semibold text-gray-700">Condition</th>
+                    <th class="py-2 px-3 font-semibold text-gray-700">Assigned Date</th>
+                  </tr></thead>
                   <tbody>
-                    ${data.assignments.map((assignment: any) => `
-                      <tr class="border-b">
-                        <td class="py-2.5 px-3 font-medium text-gray-900">${assignment.asset.name}</td>
-                        <td class="py-2.5 px-3 font-mono text-gray-600">
-                          Tag: ${assignment.asset.assetTag}<br/>
-                          Code: ${assignment.asset.assetCode || "N/A"}
-                        </td>
-                        <td class="py-2.5 px-3 text-gray-600">${assignment.asset.category?.name || "N/A"}</td>
-                        <td class="py-2.5 px-3 text-gray-600">${assignment.asset.brand} / ${assignment.asset.model || "N/A"}</td>
-                        <td class="py-2.5 px-3 text-gray-600">${assignment.physicalCondition || assignment.asset.status}</td>
-                        <td class="py-2.5 px-3 text-gray-600">${new Date(assignment.assignedAt).toLocaleDateString()}</td>
-                      </tr>
-                    `).join("")}
+                    ${data.assignments.map((a: any) => `<tr class="border-b">
+                      <td class="py-2.5 px-3 font-medium text-gray-900">${a.asset.name}</td>
+                      <td class="py-2.5 px-3 font-mono text-gray-600">Tag: ${a.asset.assetTag}<br/>Code: ${a.asset.assetCode || "N/A"}</td>
+                      <td class="py-2.5 px-3 text-gray-600">${a.asset.category?.name || "N/A"}</td>
+                      <td class="py-2.5 px-3 text-gray-600">${a.asset.brand} / ${a.asset.model || "N/A"}</td>
+                      <td class="py-2.5 px-3 text-gray-600">${a.physicalCondition || a.asset.status}</td>
+                      <td class="py-2.5 px-3 text-gray-600">${new Date(a.assignedAt).toLocaleDateString()}</td>
+                    </tr>`).join("")}
                   </tbody>
                 </table>
-              ` : `
-                <p class="text-sm text-gray-500 italic py-2">No active assets currently assigned.</p>
-              `}
+              ` : `<p class="text-sm text-gray-500 italic py-2">No active assets currently assigned.</p>`}
             </div>
-
-            ${data.history && data.history.length > 0 ? `
-              <div class="mb-8">
-                <h3 class="text-base font-bold text-gray-800 border-b-2 border-gray-200 pb-1 mb-3">Assignment History & Timeline</h3>
-                <table class="w-full text-left border-collapse text-xs border border-gray-200">
-                  <thead>
-                    <tr class="border-b bg-gray-50">
-                      <th class="py-2 px-3 font-semibold text-gray-700">Asset Name</th>
-                      <th class="py-2 px-3 font-semibold text-gray-700">Asset Tag</th>
-                      <th class="py-2 px-3 font-semibold text-gray-700">Assigned</th>
-                      <th class="py-2 px-3 font-semibold text-gray-700">Returned</th>
-                      <th class="py-2 px-3 font-semibold text-gray-700">Return Condition</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${data.history.map((h: any) => `
-                      <tr class="border-b">
-                        <td class="py-2 px-3 font-medium text-gray-900">${h.asset.name}</td>
-                        <td class="py-2 px-3 font-mono text-gray-600">${h.asset.assetTag}</td>
-                        <td class="py-2 px-3 text-gray-600">${new Date(h.assignedAt).toLocaleDateString()}</td>
-                        <td class="py-2 px-3 text-gray-600">${h.returnedAt ? new Date(h.returnedAt).toLocaleDateString() : "N/A"}</td>
-                        <td class="py-2 px-3 text-gray-600 italic">${h.returnCondition || h.physicalCondition || "N/A"}</td>
-                      </tr>
-                    `).join("")}
-                  </tbody>
-                </table>
-              </div>
-            ` : ""}
-
             <div class="mt-20 grid grid-cols-2 gap-12 text-xs">
               <div class="border-t border-gray-400 pt-3 text-center">
                 <p class="font-semibold text-gray-800">Employee Signature</p>
@@ -207,307 +203,483 @@ export function EmployeeDetailsSheet({
               </div>
             </div>
           </div>
-          <script>
-            window.onload = function() {
-              window.print();
-            }
-          </script>
+          <script>window.onload = function() { window.print(); }</script>
         </body>
       </html>
-    `;
-
-    printWindow.document.open();
-    printWindow.document.write(html);
-    printWindow.document.close();
+    `
+    printWindow.document.open()
+    printWindow.document.write(html)
+    printWindow.document.close()
   }
 
+  const handleGetHandoverLink = async () => {
+    if (!employeeId) return
+    setGeneratingLink(true)
+    try {
+      const res = await fetch(`/api/employees/${employeeId}/acknowledgement-batch`, {
+        method: "POST",
+      })
+      if (!res.ok) {
+        const errData = await res.json()
+        throw new Error(errData.error || "Failed to generate handover link")
+      }
+      const resData = await res.json()
+      const fullUrl = `${window.location.origin}${resData.link}`
+      await navigator.clipboard.writeText(fullUrl)
+      toast.success("Combined handover link copied to clipboard!")
+    } catch (err: any) {
+      toast.error(err.message || "Failed to generate link.")
+    } finally {
+      setGeneratingLink(false)
+    }
+  }
+
+  const TABS: { key: Tab; label: string; icon: React.ElementType; count?: number }[] = [
+    { key: "info",    label: "Profile Info", icon: Info },
+    { key: "assets",  label: "Assets",       icon: Package, count: data?.assignments?.length ?? 0 },
+    { key: "history", label: "History",      icon: History, count: data?.history?.length ?? 0 },
+  ]
+
   return (
-    <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent className="sm:max-w-[700px] w-full p-0 flex flex-col">
-        <SheetHeader className="p-6 pb-2">
-          <div className="flex items-center justify-between">
-            <SheetTitle className="flex items-center gap-4">
-              {isLoading ? (
-                <Skeleton className="h-10 w-10 rounded-full" />
-              ) : data ? (
-                <Avatar size="lg">
-                  <AvatarImage src={data.user?.image} />
-                  <AvatarFallback>{getInitials(data.fullName)}</AvatarFallback>
-                </Avatar>
-              ) : (
-                <div className="h-10 w-10 rounded-full bg-muted" />
-              )}
-              <div className="flex flex-col gap-1">
-                {isLoading ? (
-                  <>
-                    <Skeleton className="h-6 w-48" />
-                    <Skeleton className="h-4 w-32" />
-                  </>
-                ) : data ? (
-                  <>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl font-bold">{data.fullName}</span>
-                      <Badge 
-                        variant={
-                          data.status === "ACTIVE" ? "default" :
-                          data.status === "TERMINATED" ? "destructive" :
-                          "secondary"
-                        }
-                      >
-                        {data.status === "ACTIVE" ? "Active" :
-                         data.status === "INACTIVE" ? "Inactive" :
-                         data.status === "ON_LEAVE" ? "On Leave" :
-                         data.status === "ON_HOLD" ? "On Hold" :
-                         data.status === "RESIGNED" ? "Resigned" :
-                         data.status === "LEFT" ? "Left" :
-                         data.status === "TERMINATED" ? "Terminated" : data.status}
-                      </Badge>
-                    </div>
-                    <span className="text-sm font-mono text-muted-foreground">
-                      {data.employeeCode}
-                    </span>
-                  </>
-                ) : null}
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent
+        showCloseButton={true}
+        className="p-0 gap-0 w-full max-w-5xl sm:max-w-5xl overflow-hidden rounded-2xl border border-border/60 shadow-2xl"
+      >
+        {/* ── Visually-hidden required a11y title ── */}
+        <DialogTitle className="sr-only">
+          {data?.fullName ?? "Employee Details"}
+        </DialogTitle>
+        <DialogDescription className="sr-only">
+          Comprehensive profile, assigned assets, and history for this employee.
+        </DialogDescription>
+
+        {/* ── Hero Header ─────────────────────────────── */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-8 pt-8 pb-0">
+          {/* Decorative blobs */}
+          <div className="pointer-events-none absolute -top-12 -right-12 h-56 w-56 rounded-full bg-violet-500/15 blur-3xl" />
+          <div className="pointer-events-none absolute bottom-0 left-24 h-32 w-32 rounded-full bg-indigo-500/10 blur-2xl" />
+
+          {isLoading ? (
+            <div className="flex items-center gap-5 pb-6">
+              <Skeleton className="h-20 w-20 rounded-2xl shrink-0" />
+              <div className="space-y-2.5 flex-1">
+                <Skeleton className="h-7 w-56" />
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="h-4 w-64" />
               </div>
-            </SheetTitle>
-            {data && (
-              <div className="flex items-center gap-2 mr-6 print:hidden">
+            </div>
+          ) : data ? (
+            /* ── 3-column hero row: avatar | info | buttons ── */
+            <div className="relative flex items-start gap-6 pb-6">
+
+              {/* Col 1 – Avatar */}
+              <div className={`flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${avatarGradient} text-2xl font-black text-white shadow-2xl ring-4 ring-white/10`}>
+                {getInitials(data.fullName)}
+              </div>
+
+              {/* Col 2 – Name, code, meta, chips */}
+              <div className="flex-1 min-w-0 pt-1">
+                {/* Row 1: name + status badge */}
+                <div className="flex items-center gap-3 flex-wrap">
+                  <h2 className="text-2xl font-black text-white tracking-tight leading-none">
+                    {data.fullName}
+                  </h2>
+                  <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-widest ${statusCfg.badge}`}>
+                    <span className={`h-1.5 w-1.5 rounded-full ${statusCfg.dot}`} />
+                    {statusCfg.label}
+                  </span>
+                </div>
+
+                {/* Row 2: code · designation · department */}
+                <div className="mt-2 flex items-center gap-2 text-[13px] text-slate-400 flex-wrap">
+                  <span className="font-mono font-bold text-slate-300 tracking-wide">{data.employeeCode}</span>
+                  {data.designation && (
+                    <>
+                      <span className="text-slate-600">·</span>
+                      <span className="text-slate-300">{data.designation}</span>
+                    </>
+                  )}
+                  {data.department?.name && (
+                    <>
+                      <span className="text-slate-600">·</span>
+                      <span className="flex items-center gap-1.5 text-slate-400">
+                        <Building2 className="h-3.5 w-3.5 text-slate-500" />
+                        {data.department.name}
+                      </span>
+                    </>
+                  )}
+                  {data.location?.name && (
+                    <>
+                      <span className="text-slate-600">·</span>
+                      <span className="flex items-center gap-1.5 text-slate-400">
+                        <MapPin className="h-3.5 w-3.5 text-slate-500" />
+                        {data.location.name}
+                      </span>
+                    </>
+                  )}
+                </div>
+
+                {/* Row 3: stat chips */}
+                <div className="mt-3 flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-1.5 rounded-lg bg-white/5 border border-white/10 px-3 py-1.5 text-[12px] text-slate-300 whitespace-nowrap">
+                    <Package className="h-3.5 w-3.5 text-violet-400" />
+                    <span className="font-bold text-white">{data.assignments?.length ?? 0}</span>
+                    <span className="text-slate-400">assets assigned</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 rounded-lg bg-white/5 border border-white/10 px-3 py-1.5 text-[12px] text-slate-300 whitespace-nowrap">
+                    <History className="h-3.5 w-3.5 text-slate-400" />
+                    <span className="font-bold text-white">{data.history?.length ?? 0}</span>
+                    <span className="text-slate-400">past assignments</span>
+                  </div>
+                  {data.joiningDate && (
+                    <div className="flex items-center gap-1.5 rounded-lg bg-white/5 border border-white/10 px-3 py-1.5 text-[12px] text-slate-300 whitespace-nowrap">
+                      <CalendarDays className="h-3.5 w-3.5 text-slate-400" />
+                      <span className="text-slate-400">Joined</span>
+                      <span className="font-bold text-white">{format(new Date(data.joiningDate), "MMM yyyy")}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Col 3 – Action buttons (top-right, no wrap) */}
+              <div className="flex shrink-0 items-center gap-2 pt-1">
+                {hasPendingHandovers && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleGetHandoverLink}
+                    disabled={generatingLink}
+                    className="h-8 border-violet-400/40 bg-violet-500/10 text-violet-300 hover:bg-violet-500/20 hover:text-violet-200 text-xs whitespace-nowrap"
+                  >
+                    {generatingLink ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />}
+                    Handover Link
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handlePrint}
-                  className="flex items-center gap-1.5"
+                  className="h-8 border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white text-xs"
                 >
-                  <Printer className="h-4 w-4" />
-                  <span>Print</span>
+                  <Printer className="h-3.5 w-3.5" />
+                  Print
                 </Button>
                 <Button
-                  variant="default"
                   size="sm"
                   onClick={handlePrint}
-                  className="flex items-center gap-1.5"
+                  className="h-8 bg-white text-slate-900 hover:bg-slate-100 text-xs font-bold"
                 >
-                  <Download className="h-4 w-4" />
-                  <span>PDF</span>
+                  <Download className="h-3.5 w-3.5" />
+                  PDF
                 </Button>
               </div>
-            )}
-          </div>
-          <SheetDescription>
-            Comprehensive details and asset assignments for the employee.
-          </SheetDescription>
-        </SheetHeader>
+            </div>
+          ) : null}
 
-        <ScrollArea className="flex-1 px-6">
-          {isError ? (
-            <div className="flex flex-col items-center justify-center h-64 text-center">
-              <p className="text-destructive font-medium">Failed to load employee details.</p>
-              <button 
+          {/* ── Tab bar ── */}
+          {data && !isLoading && (
+            <div className="relative flex gap-1 border-b border-white/10">
+              {TABS.map(({ key, label, icon: Icon, count }) => (
+                <button
+                  key={key}
+                  onClick={() => setActiveTab(key)}
+                  className={`relative flex items-center gap-2 px-5 pb-3.5 pt-1 text-[13px] font-semibold transition-colors whitespace-nowrap ${
+                    activeTab === key
+                      ? "text-white"
+                      : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  {label}
+                  {count !== undefined && (
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-black tabular-nums ${
+                      activeTab === key
+                        ? "bg-white/20 text-white"
+                        : "bg-white/8 text-slate-500"
+                    }`}>
+                      {count}
+                    </span>
+                  )}
+                  {activeTab === key && (
+                    <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-gradient-to-r from-violet-400 to-indigo-400" />
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ── Body ─────────────────────────────────────── */}
+        <ScrollArea className="max-h-[calc(100vh-280px)] min-h-[280px]">
+          {/* Error state */}
+          {isError && (
+            <div className="flex flex-col items-center justify-center py-20 text-center gap-3">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-dashed border-border/60 bg-muted/30">
+                <XCircle className="h-7 w-7 text-muted-foreground/40" />
+              </div>
+              <p className="font-semibold text-muted-foreground">Failed to load employee details.</p>
+              <button
                 onClick={() => employeeId && fetchEmployeeDetails(employeeId)}
-                className="text-sm underline mt-2 text-primary"
+                className="text-sm text-primary underline underline-offset-2"
               >
                 Try again
               </button>
             </div>
-          ) : isLoading ? (
-            <div className="space-y-8 py-4">
+          )}
+
+          {/* Loading skeleton */}
+          {isLoading && (
+            <div className="space-y-5 p-7">
               <div className="grid grid-cols-2 gap-4">
                 {[1, 2, 3, 4].map((i) => (
-                  <Skeleton key={i} className="h-16 w-full rounded-lg" />
+                  <Skeleton key={i} className="h-16 w-full rounded-xl" />
                 ))}
               </div>
-              <Skeleton className="h-64 w-full rounded-lg" />
+              <Skeleton className="h-56 w-full rounded-xl" />
             </div>
-          ) : data ? (
-            <div className="space-y-8 py-4">
-              {/* Personal Info Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="flex items-start gap-3">
-                  <Mail className="h-5 w-5 text-muted-foreground mt-0.5" />
-                  <div className="flex flex-col">
-                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Email</span>
-                    <span className="text-sm">{data.email || "N/A"}</span>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Phone className="h-5 w-5 text-muted-foreground mt-0.5" />
-                  <div className="flex flex-col">
-                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Phone</span>
-                    <span className="text-sm">{data.phone || "N/A"}</span>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Building2 className="h-5 w-5 text-muted-foreground mt-0.5" />
-                  <div className="flex flex-col">
-                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Department</span>
-                    <span className="text-sm">{data.department?.name || "N/A"}</span>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
-                  <div className="flex flex-col">
-                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Location</span>
-                    <span className="text-sm">{data.location?.name || "N/A"}</span>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Briefcase className="h-5 w-5 text-muted-foreground mt-0.5" />
-                  <div className="flex flex-col">
-                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Designation</span>
-                    <span className="text-sm">{data.designation || "N/A"}</span>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
-                  <div className="flex flex-col">
-                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Joining Date</span>
-                    <span className="text-sm">
-                      {data.joiningDate ? format(new Date(data.joiningDate), "PPP") : "N/A"}
-                    </span>
-                  </div>
-                </div>
-                {data.exitDate && (
-                  <div className="flex items-start gap-3">
-                    <Calendar className="h-5 w-5 text-destructive mt-0.5" />
-                    <div className="flex flex-col">
-                      <span className="text-xs font-medium text-destructive uppercase tracking-wider">Exit Date</span>
-                      <span className="text-sm">
-                        {format(new Date(data.exitDate), "PPP")}
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
+          )}
 
+          {/* ── Tab: Profile Info ── */}
+          {data && !isLoading && activeTab === "info" && (
+            <div className="p-7 space-y-6">
+              {/* Linked user account */}
               {data.user && (
-                <div className="bg-muted/50 p-4 rounded-lg flex items-center justify-between">
+                <div className="flex items-center justify-between rounded-xl border border-border/60 bg-muted/20 px-4 py-3">
                   <div className="flex items-center gap-3">
                     <Avatar size="sm">
                       <AvatarImage src={data.user.image} />
                       <AvatarFallback>{getInitials(data.user.name || data.fullName)}</AvatarFallback>
                     </Avatar>
-                    <div className="flex flex-col">
-                      <span className="text-sm font-medium">Linked User Account</span>
-                      <span className="text-xs text-muted-foreground">{data.user.email}</span>
+                    <div>
+                      <p className="text-sm font-semibold">Linked User Account</p>
+                      <p className="text-xs text-muted-foreground">{data.user.email}</p>
                     </div>
                   </div>
-                  <Badge variant="outline" className="bg-background">System User</Badge>
+                  <span className="rounded-full border border-border/60 bg-background px-2.5 py-0.5 text-[11px] font-bold text-muted-foreground">
+                    System User
+                  </span>
                 </div>
               )}
 
-              <Separator />
+              {/* Info grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {[
+                  { icon: Mail,      label: "Email",       value: data.email },
+                  { icon: Phone,     label: "Phone",       value: data.phone },
+                  { icon: Building2, label: "Department",  value: data.department?.name },
+                  { icon: MapPin,    label: "Location",    value: data.location?.name },
+                  { icon: Briefcase, label: "Designation", value: data.designation },
+                  {
+                    icon: Calendar,
+                    label: "Joining Date",
+                    value: data.joiningDate ? format(new Date(data.joiningDate), "PPP") : null,
+                  },
+                  ...(data.exitDate
+                    ? [{ icon: Calendar, label: "Exit Date", value: format(new Date(data.exitDate), "PPP"), danger: true }]
+                    : []),
+                ].map(({ icon: Icon, label, value, danger }: any) => (
+                  <div
+                    key={label}
+                    className="flex items-start gap-3 rounded-xl border border-border/50 bg-card px-4 py-3"
+                  >
+                    <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+                      danger ? "bg-red-100/80 dark:bg-red-950/30" : "bg-muted/60"
+                    }`}>
+                      <Icon className={`h-4 w-4 ${danger ? "text-red-500" : "text-muted-foreground"}`} />
+                    </div>
+                    <div>
+                      <p className={`text-[10px] font-bold uppercase tracking-widest ${
+                        danger ? "text-red-500" : "text-muted-foreground"
+                      }`}>
+                        {label}
+                      </p>
+                      <p className="text-sm font-medium text-foreground mt-0.5">
+                        {value || "—"}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
-              {/* Current Assets Section */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold flex items-center gap-2">
-                    <Package className="h-5 w-5" />
-                    Currently Assigned Assets
-                  </h3>
-                  <Badge>{data.assignments?.length || 0} Assets</Badge>
-                </div>
+          {/* ── Tab: Assets ── */}
+          {data && !isLoading && activeTab === "assets" && (
+            <div className="p-7 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                  <Package className="h-4 w-4 text-violet-500" />
+                  Currently Assigned Assets
+                </h3>
+                <span className="rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 px-2.5 py-0.5 text-[11px] font-bold">
+                  {data.assignments?.length ?? 0} assets
+                </span>
+              </div>
 
-                {data.assignments && data.assignments.length > 0 ? (
-                  <div className="rounded-md border">
-                    <Table>
-                      <TableHeader className="bg-muted/50">
-                        <TableRow>
-                          <TableHead className="w-[140px]">Asset / Code</TableHead>
-                          <TableHead>Category</TableHead>
-                          <TableHead>Brand/Model</TableHead>
-                          <TableHead>Status/Condition</TableHead>
-                          <TableHead className="text-right">Assigned</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {data.assignments.map((assignment: any) => (
-                          <TableRow key={assignment.id}>
-                            <TableCell className="py-3">
-                              <div className="font-medium text-sm">{assignment.asset.name}</div>
-                              <div className="text-[10px] font-mono text-muted-foreground flex flex-col">
-                                <span>Tag: {assignment.asset.assetTag}</span>
-                                <span>Code: {assignment.asset.assetCode || "N/A"}</span>
+              {data.assignments && data.assignments.length > 0 ? (
+                <div className="divide-y divide-border/50 rounded-xl border border-border/60 overflow-hidden">
+                  {data.assignments.map((assignment: any, idx: number) => {
+                    const condKey = (assignment.physicalCondition || "GOOD").toUpperCase()
+                    const condClass = CONDITION_CONFIG[condKey] ?? "bg-slate-100 text-slate-600 border-slate-200"
+                    const isAcked = assignment.acknowledgement?.status === "ACKNOWLEDGED"
+
+                    return (
+                      <div
+                        key={assignment.id}
+                        className="group flex flex-col gap-3 px-5 py-4 transition-colors hover:bg-muted/20"
+                      >
+                        <div className="flex items-start gap-3">
+                          {/* Asset icon */}
+                          <div className="relative shrink-0">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-violet-200/60 dark:border-violet-700/40 bg-gradient-to-br from-violet-50 to-indigo-100/80 dark:from-violet-950/40 dark:to-indigo-900/20">
+                              <Tag className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                            </div>
+                            {isAcked && (
+                              <div className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 ring-2 ring-card">
+                                <CheckCircle2 className="h-2.5 w-2.5 text-white" />
                               </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="secondary" className="text-[10px]">
-                                {assignment.asset.category?.name || "N/A"}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-xs">
-                              {assignment.asset.brand} / {assignment.asset.model || "N/A"}
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex flex-col gap-1">
-                                <Badge 
-                                  variant={assignment.asset.status === "ACTIVE" || assignment.asset.status === "ASSIGNED" ? "default" : "outline"} 
-                                  className="text-[10px] w-fit"
-                                >
-                                  {assignment.asset.status}
-                                </Badge>
-                                {assignment.physicalCondition && (
-                                  <span className="text-[10px] text-muted-foreground italic">
-                                    {assignment.physicalCondition}
+                            )}
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <span className="font-bold text-sm text-foreground truncate">
+                                {assignment.asset.name}
+                              </span>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${condClass}`}>
+                                  {assignment.physicalCondition || "GOOD"}
+                                </span>
+                                {isAcked ? (
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800/40 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
+                                    <CheckCircle2 className="h-2.5 w-2.5" /> Signed
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 dark:bg-amber-950/30 dark:border-amber-800/40 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300">
+                                    <Clock className="h-2.5 w-2.5" /> Pending
                                   </span>
                                 )}
                               </div>
-                            </TableCell>
-                            <TableCell className="text-right text-xs">
-                              <div>{format(new Date(assignment.assignedAt), "PP")}</div>
-                              {assignment.handoverType && (
-                                <div className="text-[10px] text-muted-foreground">{assignment.handoverType}</div>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed rounded-lg bg-muted/20">
-                    <Package className="h-10 w-10 text-muted-foreground/30 mb-2" />
-                    <p className="text-sm text-muted-foreground font-medium">No active assets assigned</p>
-                  </div>
-                )}
-              </div>
+                            </div>
 
-              {/* History Section (Optional) */}
-              {data.history && data.history.length > 0 && (
-                <div className="space-y-4 pb-8">
-                  <h3 className="text-lg font-semibold text-muted-foreground">Assignment History</h3>
-                  <div className="rounded-md border border-muted opacity-80">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="hover:bg-transparent">
-                          <TableHead className="text-xs">Asset</TableHead>
-                          <TableHead className="text-xs">Assigned</TableHead>
-                          <TableHead className="text-xs">Returned</TableHead>
-                          <TableHead className="text-xs text-right">Condition</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {data.history.map((h: any) => (
-                          <TableRow key={h.id} className="text-xs">
-                            <TableCell>
-                              <div className="font-medium">{h.asset.name}</div>
-                              <div className="text-[10px] font-mono">{h.asset.assetTag}</div>
-                            </TableCell>
-                            <TableCell>{format(new Date(h.assignedAt), "PP")}</TableCell>
-                            <TableCell>{format(new Date(h.returnedAt), "PP")}</TableCell>
-                            <TableCell className="text-right italic text-muted-foreground">
-                              {h.returnCondition || h.physicalCondition || "N/A"}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                            <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+                              <span className="font-mono font-bold text-slate-500 dark:text-slate-400">
+                                #{assignment.asset.assetTag}
+                              </span>
+                              {assignment.asset.assetCode && (
+                                <span className="font-mono">{assignment.asset.assetCode}</span>
+                              )}
+                              {assignment.asset.category?.name && (
+                                <span className="flex items-center gap-1">
+                                  <span className="text-border">·</span>
+                                  {assignment.asset.category.name}
+                                </span>
+                              )}
+                              {assignment.asset.brand && (
+                                <span className="flex items-center gap-1">
+                                  <span className="text-border">·</span>
+                                  {assignment.asset.brand}
+                                  {assignment.asset.model ? ` / ${assignment.asset.model}` : ""}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground pl-13 ml-[52px]">
+                          <CalendarDays className="h-3 w-3" />
+                          Assigned {format(new Date(assignment.assignedAt), "PP")}
+                          {assignment.handoverType && (
+                            <>
+                              <span className="text-border">·</span>
+                              <span className="capitalize">{assignment.handoverType.toLowerCase().replace(/_/g, " ")}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-16 rounded-xl border-2 border-dashed border-border/50 bg-muted/10">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted/50">
+                    <Package className="h-7 w-7 text-muted-foreground/30" />
                   </div>
+                  <p className="mt-3 font-semibold text-muted-foreground">No active assets assigned</p>
+                  <p className="text-xs text-muted-foreground/60 mt-1">
+                    Assign assets from the Assets module.
+                  </p>
                 </div>
               )}
             </div>
-          ) : null}
+          )}
+
+          {/* ── Tab: History ── */}
+          {data && !isLoading && activeTab === "history" && (
+            <div className="p-7 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                  <History className="h-4 w-4 text-slate-500" />
+                  Assignment History
+                </h3>
+                <span className="rounded-full bg-muted text-muted-foreground px-2.5 py-0.5 text-[11px] font-bold">
+                  {data.history?.length ?? 0} records
+                </span>
+              </div>
+
+              {data.history && data.history.length > 0 ? (
+                <div className="divide-y divide-border/50 rounded-xl border border-border/60 overflow-hidden">
+                  {data.history.map((h: any) => (
+                    <div
+                      key={h.id}
+                      className="flex items-start gap-3 px-5 py-4 hover:bg-muted/20 transition-colors"
+                    >
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted/50 border border-border/50 mt-0.5">
+                        <History className="h-4 w-4 text-muted-foreground/60" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="font-bold text-sm text-foreground">{h.asset.name}</span>
+                          <span className="font-mono text-[11px] text-muted-foreground">
+                            #{h.asset.assetTag}
+                          </span>
+                        </div>
+                        <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <CalendarDays className="h-3 w-3" />
+                            Assigned {format(new Date(h.assignedAt), "PP")}
+                          </span>
+                          {h.returnedAt && (
+                            <span className="flex items-center gap-1">
+                              <span className="text-border">→</span>
+                              Returned {format(new Date(h.returnedAt), "PP")}
+                            </span>
+                          )}
+                          {(h.returnCondition || h.physicalCondition) && (
+                            <span className="flex items-center gap-1 italic">
+                              <span className="text-border">·</span>
+                              {h.returnCondition || h.physicalCondition}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-16 rounded-xl border-2 border-dashed border-border/50 bg-muted/10">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted/50">
+                    <History className="h-7 w-7 text-muted-foreground/30" />
+                  </div>
+                  <p className="mt-3 font-semibold text-muted-foreground">No assignment history</p>
+                  <p className="text-xs text-muted-foreground/60 mt-1">Past assignments will appear here.</p>
+                </div>
+              )}
+            </div>
+          )}
         </ScrollArea>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   )
 }

@@ -670,33 +670,141 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
           {asset.assignments.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4 text-center">No handover history found.</p>
           ) : (
-            <div className="space-y-3">
-              {asset.assignments.slice(0, 5).map((entry: any) => (
-                <div key={entry.id} className="flex items-start gap-3 rounded-xl border border-border/40 bg-muted/20 p-4">
-                  <div className="h-8 w-8 rounded-full bg-indigo-500/15 flex items-center justify-center shrink-0">
-                    <Users className="h-4 w-4 text-indigo-500" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <p className="text-sm font-semibold">
-                        {entry.employee?.fullName || entry.department?.name || entry.user?.name || entry.user?.email || "Unknown"}
-                      </p>
-                      <span className="text-xs text-muted-foreground">
-                        {format(new Date(entry.assignedAt), "PP")}
-                        {entry.returnedAt ? ` → ${format(new Date(entry.returnedAt), "PP")}` : " → Present"}
+            <div className="space-y-4">
+              {asset.assignments.slice(0, 3).map((entry: any) => {
+                const handoverTypeLabels: Record<string, string> = {
+                  NEW_HIRE: "New Hire",
+                  REPLACEMENT: "Replacement",
+                  TEMPORARY_LOAN: "Temporary Loan",
+                  NEW_ASSET_ASSIGN: "New Asset Assign",
+                  ASSET_UPDATE: "Asset Update",
+                  ASSIGNED_TO_DEPARTMENT: "Assigned to Department",
+                };
+
+                const conditionLabels: Record<string, string> = {
+                  BRAND_NEW: "Brand New",
+                  USED_EXCELLENT: "Used - Excellent",
+                  USED_FAIR: "Used - Fair",
+                };
+
+                const functionalStatusLabels: Record<string, string> = {
+                  WORKING: "Working",
+                  MINOR_ISSUES: "Minor Issues",
+                };
+
+                const isEmployee = !entry.departmentId;
+
+                return (
+                  <div key={entry.id} className="group relative flex flex-col gap-4 rounded-xl border border-border/60 bg-muted/10 p-5 transition-all duration-300 hover:shadow-md hover:border-violet-500/30">
+                    {/* Header: Title and Status */}
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <div className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 shadow-sm ${
+                          entry.returnedAt ? "bg-muted text-muted-foreground" : "bg-violet-500/10 text-violet-500"
+                        }`}>
+                          {isEmployee ? (
+                            <Users className="h-5 w-5" />
+                          ) : (
+                            <Building2 className="h-5 w-5" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-bold text-foreground flex items-center gap-1.5 flex-wrap">
+                            {entry.employee?.fullName || entry.department?.name || entry.user?.name || entry.user?.email || "Unknown"}
+                            {entry.employee?.employeeCode && (
+                              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted font-normal text-muted-foreground">
+                                {entry.employee.employeeCode}
+                              </span>
+                            )}
+                          </h4>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                            {isEmployee ? "Individual Assignment" : `Departmental Unit`}
+                          </p>
+                        </div>
+                      </div>
+
+                      {entry.returnedAt ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-muted border px-2.5 py-0.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                          <CheckCircle2 className="h-3 w-3 text-muted-foreground/60" /> Returned
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider animate-pulse">
+                          <Clock className="h-3 w-3 text-emerald-500" /> Active
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Timeline row */}
+                    <div className="grid gap-3 sm:grid-cols-2 border-t border-border/40 pt-3.5">
+                      <div className="space-y-0.5">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Assigned On</p>
+                        <p className="text-xs font-semibold text-foreground">
+                          {format(new Date(entry.assignedAt), "PP p")}
+                        </p>
+                      </div>
+                      <div className="space-y-0.5">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Returned On</p>
+                        <p className="text-xs font-semibold text-foreground">
+                          {entry.returnedAt ? (
+                            <span className="text-destructive">{format(new Date(entry.returnedAt), "PP p")}</span>
+                          ) : (
+                            <span className="text-emerald-600 font-bold">Present (Active)</span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Specs & Conditions grid */}
+                    <div className="grid gap-4 grid-cols-2 md:grid-cols-4 bg-muted/20 rounded-lg p-3.5 text-xs border border-border/30">
+                      <div>
+                        <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground mb-0.5">Handover Type</p>
+                        <p className="font-semibold text-foreground/90 truncate">
+                          {handoverTypeLabels[entry.handoverType] || entry.handoverType || "N/A"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground mb-0.5">Condition</p>
+                        <p className="font-semibold text-foreground/90 truncate">
+                          {conditionLabels[entry.physicalCondition] || entry.physicalCondition || "N/A"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground mb-0.5">Functional Status</p>
+                        <p className="font-semibold text-foreground/90 truncate">
+                          {functionalStatusLabels[entry.functionalStatus] || entry.functionalStatus || "N/A"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground mb-0.5">Location</p>
+                        <p className="font-semibold text-foreground/90 truncate">
+                          {entry.location?.name || "N/A"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Notes Box */}
+                    {entry.notes && (
+                      <div className="text-xs bg-amber-500/5 border border-amber-500/10 rounded-lg p-3 text-muted-foreground italic">
+                        <strong className="text-[10px] not-italic font-bold uppercase tracking-wider text-amber-600 block mb-0.5">Handover Remarks</strong>
+                        "{entry.notes}"
+                      </div>
+                    )}
+
+                    {/* Footer Info */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/40 pt-3 text-[10px] text-muted-foreground">
+                      <div className="flex flex-wrap gap-x-3 gap-y-1">
+                        <span>Issued By: <strong className="font-semibold text-foreground/85">{entry.assignedBy?.name || entry.assignedBy?.email || "N/A"}</strong></span>
+                        {entry.manager?.fullName && (
+                          <span>Supervisor: <strong className="font-semibold text-foreground/85">{entry.manager.fullName}</strong></span>
+                        )}
+                      </div>
+                      <span className="font-mono bg-muted px-1.5 py-0.5 rounded text-[9px] border border-border/50">
+                        TXN: {entry.transactionId}
                       </span>
                     </div>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">
-                      {entry.handoverType || "—"}
-                      {entry.location && ` • ${entry.location.name}`}
-                      {entry.condition && ` • ${entry.condition}`}
-                    </p>
                   </div>
-                  {!entry.returnedAt && (
-                    <Badge variant="outline" className="text-[10px] shrink-0">Active</Badge>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

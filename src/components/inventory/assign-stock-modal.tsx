@@ -25,6 +25,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { assignInventoryStock } from "@/app/actions/inventory-transaction-actions";
 
 import type { InventoryLocation, InventoryItem, InventoryBalance } from "@prisma/client";
+import { SearchableSelector } from "@/components/ui/searchable-selector";
 
 interface EmployeeOption {
   id: string;
@@ -72,6 +73,14 @@ export function AssignStockModal({
   const [selectedDepartmentId, setSelectedDepartmentId] = useState("");
 
   const [handoverType, setHandoverType] = useState("NEW_HIRE");
+
+  useEffect(() => {
+    if (targetType === "DEPARTMENT") {
+      setHandoverType("ASSIGNED_TO_DEPARTMENT");
+    } else if (targetType === "EMPLOYEE") {
+      setHandoverType("NEW_HIRE");
+    }
+  }, [targetType]);
   const [physicalCondition, setPhysicalCondition] = useState("BRAND_NEW");
   const [functionalStatus, setFunctionalStatus] = useState("WORKING");
   const [handoverDate, setHandoverDate] = useState(new Date().toISOString().slice(0, 10));
@@ -244,38 +253,31 @@ export function AssignStockModal({
             {targetType === "EMPLOYEE" ? (
               <div className="space-y-2">
                 <Label>Select Employee</Label>
-                <Select value={selectedEmployeeId} onValueChange={(val) => setSelectedEmployeeId(val || "")}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Employee">
-                      {employees.find(emp => emp.id === selectedEmployeeId)?.name}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {employees.map((emp) => (
-                      <SelectItem key={emp.id} value={emp.id}>
-                        {emp.name} {emp.employeeId ? `(${emp.employeeId})` : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelector
+                  options={employees.map((emp) => ({
+                    value: emp.id,
+                    label: emp.name,
+                    description: emp.employeeId ? `ID: ${emp.employeeId}` : undefined,
+                  }))}
+                  value={selectedEmployeeId}
+                  onSelect={(val) => setSelectedEmployeeId(val || "")}
+                  placeholder="Select Employee..."
+                  searchPlaceholder="Search employee..."
+                />
               </div>
             ) : (
               <div className="space-y-2">
                 <Label>Select Department</Label>
-                <Select value={selectedDepartmentId} onValueChange={(val) => setSelectedDepartmentId(val || "")}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Department">
-                      {departments.find(d => d.id === selectedDepartmentId)?.name}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {departments.map((d) => (
-                      <SelectItem key={d.id} value={d.id}>
-                        {d.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelector
+                  options={departments.map((d) => ({
+                    value: d.id,
+                    label: d.name,
+                  }))}
+                  value={selectedDepartmentId}
+                  onSelect={(val) => setSelectedDepartmentId(val || "")}
+                  placeholder="Select Department..."
+                  searchPlaceholder="Search department..."
+                />
               </div>
             )}
 
@@ -303,6 +305,9 @@ export function AssignStockModal({
                       <SelectItem value="NEW_HIRE">New Hire</SelectItem>
                       <SelectItem value="REPLACEMENT">Replacement</SelectItem>
                       <SelectItem value="TEMPORARY_LOAN">Temporary Loan</SelectItem>
+                      <SelectItem value="NEW_ASSET_ASSIGN">New Asset Assign</SelectItem>
+                      <SelectItem value="ASSET_UPDATE">Asset Update</SelectItem>
+                      <SelectItem value="ASSIGNED_TO_DEPARTMENT">Assigned to Department</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

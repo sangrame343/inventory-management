@@ -89,7 +89,11 @@ export async function importAssets(formData: FormData): Promise<{ success: boole
     const handoverTypeMap: any = {
       "new hire": "NEW_HIRE",
       "replacement": "REPLACEMENT",
-      "temporary loan": "TEMPORARY_LOAN"
+      "temporary loan": "TEMPORARY_LOAN",
+      "new asset assign": "NEW_ASSET_ASSIGN",
+      "asset update": "ASSET_UPDATE",
+      "assigned to department": "ASSIGNED_TO_DEPARTMENT",
+      "assigned to Department": "ASSIGNED_TO_DEPARTMENT"
     };
 
     // Parse each row

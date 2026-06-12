@@ -72,6 +72,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json(assignment, { status: 201 });
   } catch (error: any) {
+    console.error("Assign Asset Error:", error);
     if (error.name === "ZodError") {
       return NextResponse.json({ error: error.errors }, { status: 400 });
     }

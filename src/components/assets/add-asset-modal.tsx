@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Plus, Sparkles, Loader2 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { SearchableSelector } from "@/components/ui/searchable-selector";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -193,6 +194,14 @@ export function AddAssetModal({
   const [selectedDepartmentAssignmentId, setSelectedDepartmentAssignmentId] = useState("");
   const [managerUserId, setManagerUserId] = useState("");
   const [handoverType, setHandoverType] = useState("NEW_HIRE");
+
+  useEffect(() => {
+    if (handoverTargetType === "DEPARTMENT") {
+      setHandoverType("ASSIGNED_TO_DEPARTMENT");
+    } else if (handoverTargetType === "EMPLOYEE") {
+      setHandoverType("NEW_HIRE");
+    }
+  }, [handoverTargetType]);
 
   // Condition / verification
   const [physicalCondition, setPhysicalCondition] = useState("BRAND_NEW");
@@ -395,17 +404,23 @@ export function AddAssetModal({
                   disabled={!selectedEmployeeId}                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select handover type">
-                      {handoverType === "NEW_HIRE" ? "New Hire" : 
-                       handoverType === "REPLACEMENT" ? "Replacement" : 
-                       handoverType === "TEMPORARY_LOAN" ? "Temporary Loan" : null}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="NEW_HIRE">New Hire</SelectItem>
-                    <SelectItem value="REPLACEMENT">Replacement</SelectItem>
-                    <SelectItem value="TEMPORARY_LOAN">
-                      Temporary Loan
-                    </SelectItem>
+                    {handoverType === "NEW_HIRE" ? "New Hire" : 
+                     handoverType === "REPLACEMENT" ? "Replacement" : 
+                     handoverType === "TEMPORARY_LOAN" ? "Temporary Loan" : 
+                     handoverType === "NEW_ASSET_ASSIGN" ? "New Asset Assign" :
+                     handoverType === "ASSET_UPDATE" ? "Asset Update" :
+                     handoverType === "ASSIGNED_TO_DEPARTMENT" ? "Assigned to Department" : null}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NEW_HIRE">New Hire</SelectItem>
+                  <SelectItem value="REPLACEMENT">Replacement</SelectItem>
+                  <SelectItem value="TEMPORARY_LOAN">
+                    Temporary Loan
+                  </SelectItem>
+                  <SelectItem value="NEW_ASSET_ASSIGN">New Asset Assign</SelectItem>
+                  <SelectItem value="ASSET_UPDATE">Asset Update</SelectItem>
+                  <SelectItem value="ASSIGNED_TO_DEPARTMENT">Assigned to Department</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -441,52 +456,38 @@ export function AddAssetModal({
               {handoverTargetType === "EMPLOYEE" && (
                 <div className="grid gap-2">
                   <Label>Employee</Label>
-                  <Select
+                  <SearchableSelector
+                    options={employees.map((emp) => ({
+                      value: emp.id,
+                      label: emp.name,
+                      description: emp.employeeId ? `ID: ${emp.employeeId}` : undefined,
+                    }))}
                     value={selectedEmployeeId}
-                    onValueChange={(val) => {
+                    onSelect={(val) => {
                       setSelectedEmployeeId(val || "");
                       setManagerUserId("");
                     }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select employee">
-                        {employees.find(e => e.id === selectedEmployeeId)?.name}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {employees.map((emp) => (
-                        <SelectItem key={emp.id} value={emp.id}>
-                          {emp.name}
-                          {emp.employeeId ? ` (${emp.employeeId})` : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    placeholder="Select employee..."
+                    searchPlaceholder="Search employee..."
+                  />
                 </div>
               )}
 
               {handoverTargetType === "DEPARTMENT" && (
                 <div className="grid gap-2">
                   <Label>Assign to Department</Label>
-                  <Select
+                  <SearchableSelector
+                    options={departments.map((dept) => ({
+                      value: dept.id,
+                      label: dept.name,
+                    }))}
                     value={selectedDepartmentAssignmentId}
-                    onValueChange={(val) => {
+                    onSelect={(val) => {
                       setSelectedDepartmentAssignmentId(val || "");
                     }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select department">
-                        {departments.find(d => d.id === selectedDepartmentAssignmentId)?.name}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {departments.map((dept) => (
-                        <SelectItem key={dept.id} value={dept.id}>
-                          {dept.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    placeholder="Select department..."
+                    searchPlaceholder="Search department..."
+                  />
                 </div>
               )}
 
