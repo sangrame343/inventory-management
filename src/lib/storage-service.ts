@@ -7,10 +7,14 @@ let supabaseClient: any = null;
 function getSupabaseClient() {
   if (supabaseClient) return supabaseClient;
 
-  const supabaseUrl = process.env.SUPABASE_URL;
+  let supabaseUrl = process.env.SUPABASE_URL;
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (supabaseUrl && supabaseServiceKey) {
+    // Strip trailing slash if present to avoid double-slash issues in client request paths
+    if (supabaseUrl.endsWith("/")) {
+      supabaseUrl = supabaseUrl.slice(0, -1);
+    }
     try {
       const { createClient } = require("@supabase/supabase-js");
       supabaseClient = createClient(supabaseUrl, supabaseServiceKey, {
