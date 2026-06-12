@@ -127,8 +127,19 @@ export function EmployeeDetailsSheet({
 
   const handlePrint = () => {
     if (!data) return
-    const printWindow = window.open("", "_blank")
-    if (!printWindow) return
+
+    // Use a hidden iframe to prevent modern browser popup blockers from blocking window.open()
+    const iframe = document.createElement("iframe")
+    iframe.style.position = "fixed"
+    iframe.style.right = "0"
+    iframe.style.bottom = "0"
+    iframe.style.width = "0"
+    iframe.style.height = "0"
+    iframe.style.border = "none"
+    document.body.appendChild(iframe)
+
+    const doc = iframe.contentWindow?.document || iframe.contentDocument
+    if (!doc) return
 
     const html = `
       <html>
@@ -203,13 +214,19 @@ export function EmployeeDetailsSheet({
               </div>
             </div>
           </div>
-          <script>window.onload = function() { window.print(); }</script>
         </body>
       </html>
     `
-    printWindow.document.open()
-    printWindow.document.write(html)
-    printWindow.document.close()
+
+    doc.open()
+    doc.write(html)
+    doc.close()
+
+    iframe.contentWindow?.focus()
+    setTimeout(() => {
+      iframe.contentWindow?.print()
+      document.body.removeChild(iframe)
+    }, 500)
   }
 
   const handleGetHandoverLink = async () => {
