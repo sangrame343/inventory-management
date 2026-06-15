@@ -17,7 +17,7 @@ interface BatchItem {
 interface BatchDetails {
   companyName: string;
   companyLogoUrl: string | null;
-  employeeName: string;
+  employeeName: string | null;
   departmentName: string | null;
   locationName: string | null;
   status: string;
@@ -295,7 +295,7 @@ export default function EmployeeAcknowledgePage() {
               <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 block">
                 Assignee Details
               </span>
-              <h3 className="text-lg font-bold">{details.employeeName}</h3>
+              <h3 className="text-lg font-bold">{details.employeeName || details.departmentName}</h3>
             </div>
           </div>
 

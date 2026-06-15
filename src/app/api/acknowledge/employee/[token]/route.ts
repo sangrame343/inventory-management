@@ -307,6 +307,11 @@ export async function GET(
             location: { select: { name: true } },
           },
         },
+        department: {
+          select: {
+            name: true,
+          },
+        },
         items: true,
       },
     });
@@ -346,7 +351,7 @@ export async function GET(
           condition: item.conditionSnapshot,
           assignedDate: item.assignedDateSnapshot,
           serialNumber: assignment?.asset?.serialNumber || "—",
-          locationName: assignment?.location?.name || batch.employee.location?.name || "—",
+          locationName: assignment?.location?.name || batch.employee?.location?.name || "—",
         };
       })
     );
@@ -354,9 +359,9 @@ export async function GET(
     return NextResponse.json({
       companyName: batch.company.name,
       companyLogoUrl: batch.company.logoUrl,
-      employeeName: batch.employee.fullName,
-      departmentName: batch.employee.department?.name || null,
-      locationName: batch.employee.location?.name || null,
+      employeeName: batch.employee?.fullName || null,
+      departmentName: batch.department?.name || batch.employee?.department?.name || null,
+      locationName: batch.employee?.location?.name || null,
       status: batch.status,
       items: itemsWithDetails,
     });
@@ -394,6 +399,11 @@ export async function POST(
           fullName: true,
           department: { select: { name: true } },
           location: { select: { name: true } },
+        },
+      },
+      department: {
+        select: {
+          name: true,
         },
       },
       items: true,
@@ -472,7 +482,7 @@ export async function POST(
           conditionSnapshot: item.conditionSnapshot,
           assignedDateSnapshot: item.assignedDateSnapshot,
           serialNumber: assignment?.asset?.serialNumber || "—",
-          locationName: assignment?.location?.name || batch.employee.location?.name || "—",
+          locationName: assignment?.location?.name || batch.employee?.location?.name || "—",
         };
       })
     );
@@ -480,9 +490,9 @@ export async function POST(
     // Generate Combined PDF Receipt
     const pdfBuffer = await generateCombinedPDFReceipt({
       companyName: batch.company.name,
-      employeeName: batch.employee.fullName,
-      departmentName: batch.employee.department?.name || null,
-      locationName: batch.employee.location?.name || null,
+      employeeName: batch.employee?.fullName || batch.department?.name || "Department",
+      departmentName: batch.department?.name || batch.employee?.department?.name || null,
+      locationName: batch.employee?.location?.name || null,
       signerName,
       signatureBuffer,
       ipAddress,
@@ -515,7 +525,8 @@ export async function POST(
           browserName,
           deviceType,
           termsAccepted: true,
-          acknowledgedByName: signerName,
+          acknowledgedByName: batch.employeeId ? signerName : null,
+          representativeName: batch.departmentId ? signerName : null,
           tokenHash: `used_batch_${batch.id}_${crypto.randomBytes(8).toString("hex")}`,
         },
       });
@@ -539,13 +550,14 @@ export async function POST(
             browserName,
             deviceType,
             termsAccepted: true,
-            acknowledgedByName: signerName,
+            acknowledgedByName: batch.employeeId ? signerName : null,
+            representativeName: batch.departmentId ? signerName : null,
             tokenHash: `batch_${batch.id}_${item.id}_${crypto.randomBytes(4).toString("hex")}`,
             assetNameSnapshot: item.assetNameSnapshot,
             assetCodeSnapshot: item.assetCodeSnapshot,
             assetTagSnapshot: item.assetTagSnapshot,
             conditionSnapshot: item.conditionSnapshot,
-            assigneeNameSnapshot: batch.employee.fullName,
+            assigneeNameSnapshot: batch.employee?.fullName || batch.department?.name || "Department",
             assignedDateSnapshot: item.assignedDateSnapshot,
           };
 

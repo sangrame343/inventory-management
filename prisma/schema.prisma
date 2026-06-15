@@ -320,6 +320,7 @@ model Department {
   purchasedAssets Asset[]           @relation("purchasedFrom")
   employees       Employee[]
   assignments     AssetAssignment[]
+  acknowledgementBatches EmployeeAssetAcknowledgementBatch[]
 
   purchasedInventoryItems InventoryItem[]   @relation("inventoryPurchasedFrom")
   ownerInventoryItems     InventoryItem[]   @relation("inventoryOwner")
@@ -1019,7 +1020,8 @@ model AssetAcknowledgement {
 
 model EmployeeAssetAcknowledgementBatch {
   id                    String                @id @default(cuid())
-  employeeId            String
+  employeeId            String?
+  departmentId          String?
   companyId             String
   
   // Security token configuration
@@ -1043,7 +1045,8 @@ model EmployeeAssetAcknowledgementBatch {
   termsAccepted         Boolean               @default(false)
   
   // Relationships
-  employee              Employee              @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employee              Employee?             @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  department            Department?           @relation(fields: [departmentId], references: [id], onDelete: Cascade)
   company               Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
   items                 EmployeeAssetAcknowledgementItem[]
   

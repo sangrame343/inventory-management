@@ -219,6 +219,11 @@ export function AssetTableClient({
   const allSelected = assets.length > 0 && selectedIds.length === assets.length;
   const someSelected = selectedIds.length > 0 && !allSelected;
 
+  /* ── Selected asset metadata for bulk-assign modal ── */
+  const selectedAssets = assets
+    .filter((a) => selectedIds.includes(a.id))
+    .map((a) => ({ id: a.id, name: a.name, assetCode: a.assetCode }));
+
   /* ── Sortable header helper ── */
   const sortableHead = (label: string, field: string) => (
     <TableHead
@@ -246,6 +251,7 @@ export function AssetTableClient({
         vendors={vendors}
         employees={employees}
         departments={departments}
+        selectedAssets={selectedAssets}
       />
 
       {/* ╔══════════════════════════════════════════════════════════════════╗

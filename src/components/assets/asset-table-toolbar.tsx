@@ -22,6 +22,7 @@ import {
   UserCheck,
   SlidersHorizontal,
   Sparkles,
+  UserPlus,
 } from "lucide-react";
 import { useDebouncedCallback } from "use-debounce";
 import { bulkDeleteAssets } from "@/app/actions/asset-actions";
@@ -36,6 +37,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { confirmDialog } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
+import { BulkAssignModal } from "./bulk-assign-modal";
 
 interface AssetTableToolbarProps {
   selectedIds: string[];
@@ -45,6 +47,8 @@ interface AssetTableToolbarProps {
   vendors: { id: string; name: string }[];
   employees: { id: string; name: string }[];
   departments: { id: string; name: string }[];
+  /** Minimal info about selected assets for the bulk-assign modal preview */
+  selectedAssets?: { id: string; name: string; assetCode?: string | null }[];
 }
 
 type FilterChip = {
@@ -106,6 +110,7 @@ export function AssetTableToolbar({
   vendors,
   employees,
   departments,
+  selectedAssets = [],
 }: AssetTableToolbarProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -115,6 +120,7 @@ export function AssetTableToolbar({
   const [employeeSearch, setEmployeeSearch] = useState("");
   const [locationSearch, setLocationSearch] = useState("");
   const [filtersExpanded, setFiltersExpanded] = useState(false);
+  const [bulkAssignOpen, setBulkAssignOpen] = useState(false);
   const filtersRef = useRef<HTMLDivElement>(null);
 
   const activeStatus =
@@ -448,12 +454,21 @@ export function AssetTableToolbar({
 
             {/* Bulk selection */}
             {selectedIds.length > 0 && (
-              <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-3 duration-200 rounded-xl border border-destructive/20 bg-destructive/[0.04] px-3 py-1.5 shadow-sm">
-                <span className="text-xs font-bold text-destructive tabular-nums">
+              <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-3 duration-200 rounded-xl border border-primary/15 bg-primary/[0.04] px-3 py-1.5 shadow-sm">
+                <span className="text-xs font-bold text-primary tabular-nums">
                   {selectedIds.length}
                 </span>
-                <span className="text-xs text-destructive/70">selected</span>
-                <div className="h-3.5 w-px bg-destructive/15" />
+                <span className="text-xs text-primary/60">selected</span>
+                <div className="h-3.5 w-px bg-border/60" />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-6 text-[11px] px-2 rounded-md shadow-sm border-primary/20 text-primary hover:bg-primary/10 hover:text-primary"
+                  onClick={() => setBulkAssignOpen(true)}
+                >
+                  <UserPlus className="h-3 w-3 mr-1" />
+                  Assign
+                </Button>
                 <Button
                   variant="destructive"
                   size="sm"
@@ -472,6 +487,15 @@ export function AssetTableToolbar({
                 </button>
               </div>
             )}
+
+            {/* Bulk Assign Modal */}
+            <BulkAssignModal
+              open={bulkAssignOpen}
+              onOpenChange={setBulkAssignOpen}
+              selectedIds={selectedIds}
+              selectedAssets={selectedAssets}
+              onSuccess={onClearSelection}
+            />
           </div>
         </div>
 

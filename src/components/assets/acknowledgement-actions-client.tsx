@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+
+
 import { Copy, Check, FileDown, RefreshCw, Loader2, Link2, Archive, Trash2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
@@ -147,94 +148,169 @@ export function AcknowledgementActionsClient({
   if (!status) return null;
 
   return (
-    <div className="mt-3 flex flex-wrap items-center gap-2.5 rounded-lg border border-border/40 bg-slate-50/50 p-2.5 dark:bg-slate-900/40">
-      <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground mr-2">
-        <span>Acknowledgement:</span>
-        <Badge variant="outline" className={`text-[10px] font-bold px-2 py-0.5 uppercase tracking-wide ${statusColors[status]}`}>
-          {status}
-        </Badge>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        {status === "PENDING" && (
-          <>
-            {rawToken ? (
-              <Button size="sm" variant="outline" onClick={() => handleCopy()} className="h-7 text-xs px-2.5 flex items-center gap-1">
-                {copied ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
-                Copy Link
-              </Button>
-            ) : (
-              <Button size="sm" variant="outline" onClick={handleRegenerate} disabled={loading} className="h-7 text-xs px-2.5 flex items-center gap-1">
-                {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Link2 className="h-3 w-3" />}
-                Generate & Copy Link
-              </Button>
-            )}
-            <Button size="sm" variant="ghost" onClick={handleRegenerate} disabled={loading} className="h-7 text-xs px-2.5 flex items-center gap-1 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200">
-              <RefreshCw className="h-3 w-3" />
+    <div className="space-y-2">
+      {/* ── PENDING ── */}
+      {status === "PENDING" && (
+        <>
+          {rawToken ? (
+            <Button
+              variant="outline"
+              className="w-full h-9 text-sm gap-2 justify-start"
+              onClick={() => handleCopy()}
+            >
+              {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+              {copied ? "Copied!" : "Copy Acknowledgement Link"}
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              className="w-full h-9 text-sm gap-2 justify-start"
+              onClick={handleRegenerate}
+              disabled={loading}
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
+              Generate &amp; Copy Link
+            </Button>
+          )}
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="flex-1 h-8 text-xs gap-1.5 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+              onClick={handleRegenerate}
+              disabled={loading}
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
               Reset Link
             </Button>
-            <Button size="sm" variant="ghost" onClick={handleDelete} disabled={loading} className="h-7 text-xs px-2.5 flex items-center gap-1 text-rose-500 hover:text-rose-700 dark:hover:text-rose-400">
-              <Trash2 className="h-3 w-3" />
-              Delete
+            <Button
+              size="sm"
+              variant="ghost"
+              className="flex-1 h-8 text-xs gap-1.5 text-rose-500 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/30"
+              onClick={handleDelete}
+              disabled={loading}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete Record
             </Button>
-          </>
-        )}
+          </div>
+        </>
+      )}
 
-        {status === "EXPIRED" && (
-          <>
-            <Button size="sm" variant="outline" onClick={handleRegenerate} disabled={loading} className="h-7 text-xs px-2.5 flex items-center gap-1">
-              {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-              Regenerate Link
-            </Button>
-            <Button size="sm" variant="ghost" onClick={handleArchive} disabled={loading} className="h-7 text-xs px-2.5 flex items-center gap-1 text-slate-500 hover:text-slate-800">
-              <Archive className="h-3 w-3" />
-              Archive
-            </Button>
-            <Button size="sm" variant="ghost" onClick={handleDelete} disabled={loading} className="h-7 text-xs px-2.5 flex items-center gap-1 text-rose-500 hover:text-rose-700">
-              <Trash2 className="h-3 w-3" />
-              Delete
-            </Button>
-          </>
-        )}
-
-        {status === "ACKNOWLEDGED" && (
-          <>
-            <Button size="sm" variant="outline" onClick={handleDownload} className="h-7 text-xs px-2.5 flex items-center gap-1 bg-white hover:bg-slate-100 dark:bg-slate-900">
-              <FileDown className="h-3.5 w-3.5" />
-              Download Signed PDF
-            </Button>
-            <Button size="sm" variant="ghost" onClick={handleArchive} disabled={loading} className="h-7 text-xs px-2.5 flex items-center gap-1 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200">
-              <Archive className="h-3 w-3" />
-              Archive
-            </Button>
-            <Button size="sm" variant="ghost" onClick={handleDelete} disabled={loading} className="h-7 text-xs px-2.5 flex items-center gap-1 text-rose-500 hover:text-rose-700 dark:hover:text-rose-400">
-              <Trash2 className="h-3 w-3" />
-              Delete
-            </Button>
-          </>
-        )}
-
-        {status === "ARCHIVED" && (
-          <>
-            <Button size="sm" variant="outline" onClick={handleRestore} disabled={loading} className="h-7 text-xs px-2.5 flex items-center gap-1">
-              {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
-              Restore Active
-            </Button>
-            <Button size="sm" variant="ghost" onClick={handleDelete} disabled={loading} className="h-7 text-xs px-2.5 flex items-center gap-1 text-rose-500 hover:text-rose-700">
-              <Trash2 className="h-3 w-3" />
-              Delete
-            </Button>
-          </>
-        )}
-
-        {status === "DELETED" && (
-          <Button size="sm" variant="outline" onClick={handleRestore} disabled={loading} className="h-7 text-xs px-2.5 flex items-center gap-1">
-            {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
-            Restore Active
+      {/* ── EXPIRED ── */}
+      {status === "EXPIRED" && (
+        <>
+          <Button
+            variant="outline"
+            className="w-full h-9 text-sm gap-2 justify-start"
+            onClick={handleRegenerate}
+            disabled={loading}
+          >
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            Regenerate Acknowledgement Link
           </Button>
-        )}
-      </div>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="flex-1 h-8 text-xs gap-1.5 text-slate-500 hover:text-slate-800"
+              onClick={handleArchive}
+              disabled={loading}
+            >
+              <Archive className="h-3.5 w-3.5" />
+              Archive
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="flex-1 h-8 text-xs gap-1.5 text-rose-500 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/30"
+              onClick={handleDelete}
+              disabled={loading}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete Record
+            </Button>
+          </div>
+        </>
+      )}
+
+      {/* ── ACKNOWLEDGED ── */}
+      {status === "ACKNOWLEDGED" && (
+        <>
+          <Button
+            variant="outline"
+            className="w-full h-9 text-sm gap-2 justify-start bg-white hover:bg-slate-50 dark:bg-slate-900"
+            onClick={handleDownload}
+          >
+            <FileDown className="h-4 w-4" />
+            Download Signed PDF Receipt
+          </Button>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="flex-1 h-8 text-xs gap-1.5 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+              onClick={handleArchive}
+              disabled={loading}
+            >
+              <Archive className="h-3.5 w-3.5" />
+              Archive
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="flex-1 h-8 text-xs gap-1.5 text-rose-500 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/30"
+              onClick={handleDelete}
+              disabled={loading}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete Record
+            </Button>
+          </div>
+        </>
+      )}
+
+      {/* ── ARCHIVED ── */}
+      {status === "ARCHIVED" && (
+        <>
+          <Button
+            variant="outline"
+            className="w-full h-9 text-sm gap-2 justify-start"
+            onClick={handleRestore}
+            disabled={loading}
+          >
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+            Restore to Active
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="w-full h-8 text-xs gap-1.5 text-rose-500 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/30"
+            onClick={handleDelete}
+            disabled={loading}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Delete Record
+          </Button>
+        </>
+      )}
+
+      {/* ── DELETED ── */}
+      {status === "DELETED" && (
+        <Button
+          variant="outline"
+          className="w-full h-9 text-sm gap-2 justify-start"
+          onClick={handleRestore}
+          disabled={loading}
+        >
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+          Restore to Active
+        </Button>
+      )}
     </div>
   );
 }
+
+
+
 
