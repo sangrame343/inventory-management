@@ -81,13 +81,86 @@ export async function createInventoryItem(input: CreateInventoryItemInput) {
   }
 
   const res = await db.$transaction(async (tx) => {
-    let finalSku = input.sku?.trim();
+    const cleanCategoryId = input.categoryId?.trim() || null;
+    const cleanPurchasedFromId = input.purchasedFromDepartmentId?.trim() || null;
+    const cleanUnitId = input.unitId?.trim() || null;
+    let cleanDefaultLocationId = input.defaultLocationId?.trim() || null;
+    const cleanDepartmentId = input.departmentId?.trim() || null;
+    const cleanVendorId = input.vendorId?.trim() || null;
+
+    if (cleanDefaultLocationId) {
+      const mainLoc = await tx.location.findFirst({
+        where: { id: cleanDefaultLocationId, companyId }
+      });
+      if (mainLoc) {
+        let invLoc = await tx.inventoryLocation.findFirst({
+          where: { companyId, name: mainLoc.name }
+        });
+        if (!invLoc) {
+          invLoc = await tx.inventoryLocation.create({
+            data: {
+              companyId,
+              name: mainLoc.name,
+              code: mainLoc.code || null,
+              description: mainLoc.description || `Auto-created matching location for inventory: ${mainLoc.name}`
+            }
+          });
+        }
+        cleanDefaultLocationId = invLoc.id;
+      }
+    }
+
+    if (cleanCategoryId) {
+      const assetCategory = await tx.assetCategory.findFirst({
+        where: { id: cleanCategoryId, companyId },
+      });
+      if (!assetCategory) {
+        throw new Error("Selected Category not found or does not exist for this company");
+      }
+    }
+
+    if (cleanPurchasedFromId) {
+      const dept = await tx.department.findFirst({
+        where: { id: cleanPurchasedFromId, companyId },
+      });
+      if (!dept) {
+        throw new Error("Selected Purchased From Company not found or does not exist for this company");
+      }
+    }
+
+    let finalSku = input.sku?.trim() || "";
     if (!finalSku) {
-      const count = await tx.inventoryItem.count({ where: { companyId } });
-      finalSku = `IBA-ABPL-SKU-${String(count + 1).padStart(3, '0')}`;
+      const company = await tx.company.update({
+        where: { id: companyId },
+        data: { lastInventorySequence: { increment: 1 } },
+        select: { code: true, name: true, lastInventorySequence: true },
+      });
+
+      let purchasedFromCode = "GEN";
+      if (cleanPurchasedFromId) {
+        const dept = await tx.department.findFirst({
+          where: { id: cleanPurchasedFromId, companyId },
+        });
+        if (dept?.code) {
+          purchasedFromCode = dept.code.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+        }
+      }
+
+      let categoryCode = "CAT";
+      if (cleanCategoryId) {
+        const cat = await tx.assetCategory.findFirst({
+          where: { id: cleanCategoryId, companyId },
+        });
+        if (cat?.code) {
+          categoryCode = cat.code.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+        }
+      }
+
+      const seqStr = String(company.lastInventorySequence).padStart(3, '0');
+      finalSku = `INV-${purchasedFromCode}-${categoryCode}-${seqStr}`;
     } else {
       const existingSku = await tx.inventoryItem.findFirst({
-        where: { companyId, sku: finalSku },
+        where: { companyId, sku: { equals: finalSku, mode: "insensitive" } },
       });
       if (existingSku) {
         throw new Error(`Item with SKU ${finalSku} already exists.`);
@@ -99,9 +172,9 @@ export async function createInventoryItem(input: CreateInventoryItemInput) {
         sku: finalSku,
         name: input.name,
         description: input.description || null,
-        categoryId: input.categoryId || null,
-        unitId: input.unitId || null,
-        defaultLocationId: input.defaultLocationId || null,
+        categoryId: cleanCategoryId,
+        unitId: cleanUnitId,
+        defaultLocationId: cleanDefaultLocationId,
         minStockLevel: input.minStockLevel || 0,
         reorderLevel: input.reorderLevel || 0,
         itemType: input.itemType || "CONSUMABLE",
@@ -114,9 +187,9 @@ export async function createInventoryItem(input: CreateInventoryItemInput) {
         brand: input.brand || null,
         model: input.model || null,
         serialNumber: input.serialNumber || null,
-        vendorId: input.vendorId || null,
-        purchasedFromDepartmentId: input.purchasedFromDepartmentId || null,
-        departmentId: input.departmentId || null,
+        vendorId: cleanVendorId,
+        purchasedFromDepartmentId: cleanPurchasedFromId,
+        departmentId: cleanDepartmentId,
         purchaseDate: input.purchaseDate ? new Date(input.purchaseDate) : null,
         cost: input.cost || null,
         warranty: input.warranty || null,
@@ -133,12 +206,12 @@ export async function createInventoryItem(input: CreateInventoryItemInput) {
       },
     });
 
-    if (input.defaultLocationId && (input.totalQuantity || 0) > 0) {
+    if (cleanDefaultLocationId && (input.totalQuantity || 0) > 0) {
       await tx.inventoryBalance.create({
         data: {
           companyId,
           itemId: item.id,
-          locationId: input.defaultLocationId,
+          locationId: cleanDefaultLocationId,
           quantityOnHand: input.totalQuantity || 0,
           availableQty: input.totalQuantity || 0,
           reservedQty: 0,
@@ -149,7 +222,7 @@ export async function createInventoryItem(input: CreateInventoryItemInput) {
         data: {
           companyId,
           itemId: item.id,
-          locationId: input.defaultLocationId,
+          locationId: cleanDefaultLocationId,
           direction: "IN",
           movementType: "OPENING_STOCK",
           quantity: input.totalQuantity || 0,
@@ -198,9 +271,56 @@ export async function updateInventoryItem(id: string, input: Partial<CreateInven
     return { success: true, message: "Request submitted for approval" };
   }
 
-  if (input.sku && input.sku !== existing.sku) {
+  const cleanCategoryId = input.categoryId !== undefined ? (input.categoryId?.trim() || null) : existing.categoryId;
+  const cleanPurchasedFromId = input.purchasedFromDepartmentId !== undefined ? (input.purchasedFromDepartmentId?.trim() || null) : existing.purchasedFromDepartmentId;
+  const cleanUnitId = input.unitId !== undefined ? (input.unitId?.trim() || null) : existing.unitId;
+  let cleanDefaultLocationId = input.defaultLocationId !== undefined ? (input.defaultLocationId?.trim() || null) : existing.defaultLocationId;
+  const cleanDepartmentId = input.departmentId !== undefined ? (input.departmentId?.trim() || null) : existing.departmentId;
+  const cleanVendorId = input.vendorId !== undefined ? (input.vendorId?.trim() || null) : existing.vendorId;
+
+  if (input.defaultLocationId !== undefined && cleanDefaultLocationId) {
+    const mainLoc = await db.location.findFirst({
+      where: { id: cleanDefaultLocationId, companyId }
+    });
+    if (mainLoc) {
+      let invLoc = await db.inventoryLocation.findFirst({
+        where: { companyId, name: mainLoc.name }
+      });
+      if (!invLoc) {
+        invLoc = await db.inventoryLocation.create({
+          data: {
+            companyId,
+            name: mainLoc.name,
+            code: mainLoc.code || null,
+            description: mainLoc.description || `Auto-created matching location for inventory: ${mainLoc.name}`
+          }
+        });
+      }
+      cleanDefaultLocationId = invLoc.id;
+    }
+  }
+
+  if (cleanCategoryId) {
+    const assetCategory = await db.assetCategory.findFirst({
+      where: { id: cleanCategoryId, companyId },
+    });
+    if (!assetCategory) {
+      throw new Error("Selected Category not found or does not exist for this company");
+    }
+  }
+
+  if (cleanPurchasedFromId) {
+    const dept = await db.department.findFirst({
+      where: { id: cleanPurchasedFromId, companyId },
+    });
+    if (!dept) {
+      throw new Error("Selected Purchased From Company not found or does not exist for this company");
+    }
+  }
+
+  if (input.sku && input.sku.trim().toLowerCase() !== existing.sku.toLowerCase()) {
     const dupe = await db.inventoryItem.findFirst({
-      where: { companyId, sku: input.sku },
+      where: { companyId, sku: { equals: input.sku.trim(), mode: "insensitive" } },
     });
     if (dupe) throw new Error("SKU already taken.");
   }
@@ -208,21 +328,21 @@ export async function updateInventoryItem(id: string, input: Partial<CreateInven
   const res = await db.inventoryItem.update({
     where: { id },
     data: {
-      sku: input.sku,
+      sku: input.sku !== undefined ? (input.sku.trim() || undefined) : undefined,
       name: input.name,
       description: input.description,
-      categoryId: input.categoryId,
-      unitId: input.unitId,
-      defaultLocationId: input.defaultLocationId,
+      categoryId: cleanCategoryId,
+      unitId: cleanUnitId,
+      defaultLocationId: cleanDefaultLocationId,
       minStockLevel: input.minStockLevel,
       reorderLevel: input.reorderLevel,
       itemType: input.itemType,
       brand: input.brand,
       model: input.model,
       serialNumber: input.serialNumber,
-      vendorId: input.vendorId,
-      purchasedFromDepartmentId: input.purchasedFromDepartmentId,
-      departmentId: input.departmentId,
+      vendorId: cleanVendorId,
+      purchasedFromDepartmentId: cleanPurchasedFromId,
+      departmentId: cleanDepartmentId,
       purchaseDate: input.purchaseDate ? new Date(input.purchaseDate) : undefined,
       cost: input.cost,
       warranty: input.warranty,
@@ -346,7 +466,9 @@ export async function getInventoryItems(params?: {
         category: true,
         unit: true,
         defaultLocation: true,
-        balances: true,
+        balances: {
+          include: { location: true },
+        },
         purchasedFromDepartment: true,
         department: true,
       },

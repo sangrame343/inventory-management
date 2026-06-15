@@ -77,13 +77,34 @@ export async function addStockTransaction(input: AddStockTransactionInput) {
   }
 
   return await db.$transaction(async (tx) => {
+    let cleanLocationId = input.locationId;
+    const mainLoc = await tx.location.findFirst({
+      where: { id: cleanLocationId, companyId }
+    });
+    if (mainLoc) {
+      let invLoc = await tx.inventoryLocation.findFirst({
+        where: { companyId, name: mainLoc.name }
+      });
+      if (!invLoc) {
+        invLoc = await tx.inventoryLocation.create({
+          data: {
+            companyId,
+            name: mainLoc.name,
+            code: mainLoc.code || null,
+            description: mainLoc.description || `Auto-created matching location for inventory: ${mainLoc.name}`
+          }
+        });
+      }
+      cleanLocationId = invLoc.id;
+    }
+
     // Lock the balance row or just select it
     let balance = await tx.inventoryBalance.findUnique({
       where: {
         companyId_itemId_locationId: {
           companyId,
           itemId: input.itemId,
-          locationId: input.locationId,
+          locationId: cleanLocationId,
         },
       },
     });
@@ -98,7 +119,7 @@ export async function addStockTransaction(input: AddStockTransactionInput) {
         data: {
           companyId,
           itemId: input.itemId,
-          locationId: input.locationId,
+          locationId: cleanLocationId,
           quantityOnHand: 0,
           availableQty: 0,
         },
@@ -125,6 +146,7 @@ export async function addStockTransaction(input: AddStockTransactionInput) {
     const txn = await tx.inventoryTransaction.create({
       data: {
         ...input,
+        locationId: cleanLocationId,
         companyId,
         createdById: userId,
         balanceAfter: newQoh,
@@ -177,12 +199,33 @@ export async function adjustStock(input: AdjustStockInput) {
   }
 
   const result = await db.$transaction(async (tx) => {
+    let cleanLocationId = input.locationId;
+    const mainLoc = await tx.location.findFirst({
+      where: { id: cleanLocationId, companyId }
+    });
+    if (mainLoc) {
+      let invLoc = await tx.inventoryLocation.findFirst({
+        where: { companyId, name: mainLoc.name }
+      });
+      if (!invLoc) {
+        invLoc = await tx.inventoryLocation.create({
+          data: {
+            companyId,
+            name: mainLoc.name,
+            code: mainLoc.code || null,
+            description: mainLoc.description || `Auto-created matching location for inventory: ${mainLoc.name}`
+          }
+        });
+      }
+      cleanLocationId = invLoc.id;
+    }
+
     let balance = await tx.inventoryBalance.findUnique({
       where: {
         companyId_itemId_locationId: {
           companyId,
           itemId: input.itemId,
-          locationId: input.locationId,
+          locationId: cleanLocationId,
         },
       },
     });
@@ -199,7 +242,7 @@ export async function adjustStock(input: AdjustStockInput) {
         data: {
           companyId,
           itemId: input.itemId,
-          locationId: input.locationId,
+          locationId: cleanLocationId,
           quantityOnHand: 0,
           availableQty: 0,
         },
@@ -215,7 +258,7 @@ export async function adjustStock(input: AdjustStockInput) {
       data: {
         companyId,
         itemId: input.itemId,
-        locationId: input.locationId,
+        locationId: cleanLocationId,
         systemQty,
         actualQty: input.actualQty,
         differenceQty: diff, // store raw diff
@@ -230,7 +273,7 @@ export async function adjustStock(input: AdjustStockInput) {
       data: {
         companyId,
         itemId: input.itemId,
-        locationId: input.locationId,
+        locationId: cleanLocationId,
         direction,
         movementType,
         quantity: absoluteDiff,
@@ -339,13 +382,34 @@ export async function issueInventoryToEmployee(input: IssueInventoryInput) {
   }
 
   const result = await db.$transaction(async (tx) => {
+    let cleanLocationId = input.locationId;
+    const mainLoc = await tx.location.findFirst({
+      where: { id: cleanLocationId, companyId }
+    });
+    if (mainLoc) {
+      let invLoc = await tx.inventoryLocation.findFirst({
+        where: { companyId, name: mainLoc.name }
+      });
+      if (!invLoc) {
+        invLoc = await tx.inventoryLocation.create({
+          data: {
+            companyId,
+            name: mainLoc.name,
+            code: mainLoc.code || null,
+            description: mainLoc.description || `Auto-created matching location for inventory: ${mainLoc.name}`
+          }
+        });
+      }
+      cleanLocationId = invLoc.id;
+    }
+
     // 1. Check balance
     const balance = await tx.inventoryBalance.findUnique({
       where: {
         companyId_itemId_locationId: {
           companyId,
           itemId: input.itemId,
-          locationId: input.locationId,
+          locationId: cleanLocationId,
         },
       },
     });
@@ -379,7 +443,7 @@ export async function issueInventoryToEmployee(input: IssueInventoryInput) {
       data: {
         companyId,
         itemId: input.itemId,
-        locationId: input.locationId,
+        locationId: cleanLocationId,
         direction: "OUT",
         movementType: "ISSUE_TO_EMPLOYEE",
         quantity: input.quantity,
@@ -596,6 +660,27 @@ export async function assignInventoryStock(input: AssignInventoryStockInput) {
   }
 
   const result = await db.$transaction(async (tx) => {
+    let cleanLocationId = input.locationId;
+    const mainLoc = await tx.location.findFirst({
+      where: { id: cleanLocationId, companyId }
+    });
+    if (mainLoc) {
+      let invLoc = await tx.inventoryLocation.findFirst({
+        where: { companyId, name: mainLoc.name }
+      });
+      if (!invLoc) {
+        invLoc = await tx.inventoryLocation.create({
+          data: {
+            companyId,
+            name: mainLoc.name,
+            code: mainLoc.code || null,
+            description: mainLoc.description || `Auto-created matching location for inventory: ${mainLoc.name}`
+          }
+        });
+      }
+      cleanLocationId = invLoc.id;
+    }
+
     const item = await tx.inventoryItem.findUnique({
       where: { id: input.itemId },
     });
@@ -611,7 +696,7 @@ export async function assignInventoryStock(input: AssignInventoryStockInput) {
         companyId_itemId_locationId: {
           companyId,
           itemId: input.itemId,
-          locationId: input.locationId,
+          locationId: cleanLocationId,
         },
       },
     });
@@ -662,7 +747,7 @@ export async function assignInventoryStock(input: AssignInventoryStockInput) {
       data: {
         companyId,
         itemId: input.itemId,
-        locationId: input.locationId,
+        locationId: cleanLocationId,
         direction: "OUT",
         movementType: input.employeeId ? "ISSUE_TO_EMPLOYEE" : "ISSUE_TO_ASSET",
         quantity: input.quantity,

@@ -24,7 +24,7 @@ export default async function InventoryItemPage(props: { params: Promise<{ id: s
 
   const [item, locations, employees, assetCategories, departments, vendors] = await Promise.all([
     getInventoryItemById(id),
-    db.inventoryLocation.findMany({ where: { companyId }, orderBy: { name: "asc" } }),
+    db.location.findMany({ where: { companyId, isActive: true }, orderBy: { name: "asc" } }),
     EmployeeService.getEmployees(companyId),
     db.assetCategory.findMany({ where: { companyId }, orderBy: { name: "asc" } }),
     db.department.findMany({ where: { companyId }, orderBy: { name: "asc" } }),

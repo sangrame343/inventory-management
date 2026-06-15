@@ -20,10 +20,10 @@ import { deleteInventoryItem } from "@/app/actions/inventory-item-actions";
 import { toast } from "sonner";
 import { confirmDialog } from "@/components/ui/confirm-dialog";
 
-import type { InventoryItem, InventoryBalance, InventoryCategory, InventoryLocation, UnitOfMeasure } from "@prisma/client";
+import type { InventoryItem, InventoryBalance, AssetCategory, InventoryLocation, UnitOfMeasure, Location } from "@prisma/client";
 
 type PopulatedItem = InventoryItem & {
-  category: InventoryCategory | null;
+  category: AssetCategory | null;
   unit: UnitOfMeasure | null;
   defaultLocation: InventoryLocation | null;
   balances: InventoryBalance[];
@@ -54,7 +54,7 @@ export function InventoryDashboard({
     outOfStockCount: number;
   };
   categories: { id: string; name: string }[];
-  locations: InventoryLocation[];
+  locations: Location[];
   units: UnitOfMeasure[];
   employees: { id: string; name: string; employeeId?: string | null; userId?: string | null }[];
   assetCategories: { id: string; name: string }[];

@@ -21,10 +21,10 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 
-import type { InventoryItem, InventoryBalance, InventoryCategory, InventoryLocation, UnitOfMeasure } from "@prisma/client";
+import type { InventoryItem, InventoryBalance, AssetCategory, InventoryLocation, UnitOfMeasure } from "@prisma/client";
 
 type PopulatedItem = InventoryItem & {
-  category: InventoryCategory | null;
+  category: AssetCategory | null;
   unit: UnitOfMeasure | null;
   defaultLocation: InventoryLocation | null;
   balances: InventoryBalance[];

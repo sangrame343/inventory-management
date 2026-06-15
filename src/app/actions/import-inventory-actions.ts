@@ -33,7 +33,7 @@ export async function importInventory(formData: FormData): Promise<{ success: bo
 
     // Pre-fetch masters
     const [categories, units, locations, existingItems] = await Promise.all([
-      db.inventoryCategory.findMany({ where: { companyId } }),
+      db.assetCategory.findMany({ where: { companyId } }),
       db.unitOfMeasure.findMany({ where: { companyId } }),
       db.inventoryLocation.findMany({ where: { companyId } }),
       db.inventoryItem.findMany({ where: { companyId }, select: { sku: true } })

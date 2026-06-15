@@ -20,7 +20,7 @@ import {
 import { adjustStock } from "@/app/actions/inventory-transaction-actions";
 
 import { toast } from "sonner";
-import type { InventoryLocation, InventoryItem, InventoryBalance } from "@prisma/client";
+import type { Location, InventoryItem, InventoryBalance } from "@prisma/client";
 
 type PopulatedItem = InventoryItem & {
   balances: InventoryBalance[];
@@ -34,18 +34,27 @@ export function StockAdjustmentModal({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  locations: InventoryLocation[];
+  locations: Location[];
   item: PopulatedItem;
 }) {
+  const matchedMainLocation = useMemo(() => {
+    const defaultLocName = (item as any).defaultLocation?.name;
+    if (!defaultLocName) return "";
+    const matched = locations.find(l => l.name.toLowerCase() === defaultLocName.toLowerCase());
+    return matched ? matched.id : "";
+  }, [item, locations]);
+
   const [loading, setLoading] = useState(false);
-  const [locationId, setLocationId] = useState(item.defaultLocationId || (locations[0]?.id ?? ""));
+  const [locationId, setLocationId] = useState(matchedMainLocation || (locations[0]?.id ?? ""));
   const [actualQty, setActualQty] = useState<string>("0");
   const [reason, setReason] = useState("");
   const [notes, setNotes] = useState("");
 
   const systemQty = useMemo(() => {
-    return item.balances.find((b) => b.locationId === locationId)?.quantityOnHand || 0;
-  }, [item.balances, locationId]);
+    const selectedLocName = locations.find((l) => l.id === locationId)?.name;
+    if (!selectedLocName) return 0;
+    return item.balances.find((b) => (b as any).location?.name.toLowerCase() === selectedLocName.toLowerCase())?.quantityOnHand || 0;
+  }, [item.balances, locations, locationId]);
 
   const diff = Number(actualQty) - systemQty;
 

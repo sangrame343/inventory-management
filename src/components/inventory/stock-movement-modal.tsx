@@ -20,7 +20,7 @@ import {
 import { addStockTransaction } from "@/app/actions/inventory-transaction-actions";
 
 import { toast } from "sonner";
-import type { InventoryLocation, InventoryItem, MovementType, MovementDirection } from "@prisma/client";
+import type { Location, InventoryItem, MovementType, MovementDirection } from "@prisma/client";
 
 export function StockMovementModal({
   open,
@@ -31,12 +31,19 @@ export function StockMovementModal({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  locations: InventoryLocation[];
+  locations: Location[];
   item: InventoryItem;
   direction: MovementDirection;
 }) {
+  const matchedMainLocation = useMemo(() => {
+    const defaultLocName = (item as any).defaultLocation?.name;
+    if (!defaultLocName) return "";
+    const matched = locations.find(l => l.name.toLowerCase() === defaultLocName.toLowerCase());
+    return matched ? matched.id : "";
+  }, [item, locations]);
+
   const [loading, setLoading] = useState(false);
-  const [locationId, setLocationId] = useState(item.defaultLocationId || (locations[0]?.id ?? ""));
+  const [locationId, setLocationId] = useState(matchedMainLocation || (locations[0]?.id ?? ""));
   const [movementType, setMovementType] = useState<MovementType | "">(direction === "IN" ? "PURCHASE_RECEIPT" : "MANUAL_STOCK_OUT");
   const [quantity, setQuantity] = useState<string>("1");
   const [unitCost, setUnitCost] = useState<string>("");

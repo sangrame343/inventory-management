@@ -32,7 +32,7 @@ import {
 import { createInventoryItem, updateInventoryItem, CreateInventoryItemInput } from "@/app/actions/inventory-item-actions";
 
 import { toast } from "sonner";
-import type { InventoryCategory, InventoryLocation, UnitOfMeasure, InventoryItem } from "@prisma/client";
+import type { AssetCategory, Location, UnitOfMeasure, InventoryItem } from "@prisma/client";
 
 const formSchema = z.object({
   sku: z.string().optional(),
@@ -81,12 +81,18 @@ export function AddItemModal({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   categories: { id: string; name: string }[];
-  locations: InventoryLocation[];
+  locations: Location[];
   units: UnitOfMeasure[];
   vendors?: { id: string; name: string }[];
   departments?: { id: string; name: string }[];
   editingItem: any | null;
 }) {
+  const matchedMainLocation = useMemo(() => {
+    if (!editingItem?.defaultLocation) return "";
+    const name = editingItem.defaultLocation.name;
+    const matched = locations.find(l => l.name.toLowerCase() === name.toLowerCase());
+    return matched ? matched.id : "";
+  }, [editingItem, locations]);
   const [loading, setLoading] = useState(false);
   const [isFetchingImage, setIsFetchingImage] = useState(false);
   const isEditing = !!editingItem;
@@ -228,7 +234,7 @@ export function AddItemModal({
         description: editingItem.description || "",
         categoryId: editingItem.categoryId || "",
         unitId: editingItem.unitId || "",
-        defaultLocationId: editingItem.defaultLocationId || "",
+        defaultLocationId: matchedMainLocation || "",
         itemType: editingItem.itemType,
         minStockLevel: editingItem.minStockLevel,
         reorderLevel: editingItem.reorderLevel,
@@ -414,7 +420,7 @@ export function AddItemModal({
                   name="purchasedFromDepartmentId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Purchased From Department / Company</FormLabel>
+                      <FormLabel>Purchased From Company</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value || ""}>
                         <FormControl>
                           <SelectTrigger>

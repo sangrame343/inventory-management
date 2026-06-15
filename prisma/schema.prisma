@@ -248,6 +248,7 @@ model Company {
   code                 String?  @unique
   lastTransferSequence Int      @default(0)
   lastAssetSequence    Int      @default(0)
+  lastInventorySequence Int     @default(0)
 
   users              CompanyUser[]
   departments        Department[]

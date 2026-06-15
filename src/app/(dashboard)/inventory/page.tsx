@@ -63,7 +63,7 @@ export default async function InventoryPage(props: {
       `
     ]),
     getInventoryCategories(),
-    getInventoryLocations(),
+    db.location.findMany({ where: { companyId, isActive: true }, orderBy: { name: "asc" } }),
     getInventoryUnits(),
     EmployeeService.getEmployees(companyId),
     db.assetCategory.findMany({ where: { companyId }, orderBy: { name: "asc" } }),
@@ -96,7 +96,7 @@ export default async function InventoryPage(props: {
           lowStockCount,
           outOfStockCount,
         }}
-        categories={categories.map(c => ({ id: c.id, name: c.name }))}
+        categories={assetCategories.map(c => ({ id: c.id, name: c.name }))}
         locations={locations}
         units={units}
         employees={employees.map(e => ({ 

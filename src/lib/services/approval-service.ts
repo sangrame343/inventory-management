@@ -171,13 +171,86 @@ export class ApprovalService {
         return { balance: updatedBalance, transaction: txn };
       } else {
         // This is createInventoryItem
-        let finalSku = input.sku?.trim();
+        const cleanCategoryId = input.categoryId?.trim() || null;
+        const cleanPurchasedFromId = input.purchasedFromDepartmentId?.trim() || null;
+        const cleanUnitId = input.unitId?.trim() || null;
+        let cleanDefaultLocationId = input.defaultLocationId?.trim() || null;
+        const cleanDepartmentId = input.departmentId?.trim() || null;
+        const cleanVendorId = input.vendorId?.trim() || null;
+
+        if (cleanDefaultLocationId) {
+          const mainLoc = await tx.location.findFirst({
+            where: { id: cleanDefaultLocationId, companyId }
+          });
+          if (mainLoc) {
+            let invLoc = await tx.inventoryLocation.findFirst({
+              where: { companyId, name: mainLoc.name }
+            });
+            if (!invLoc) {
+              invLoc = await tx.inventoryLocation.create({
+                data: {
+                  companyId,
+                  name: mainLoc.name,
+                  code: mainLoc.code || null,
+                  description: mainLoc.description || `Auto-created matching location for inventory: ${mainLoc.name}`
+                }
+              });
+            }
+            cleanDefaultLocationId = invLoc.id;
+          }
+        }
+
+        if (cleanCategoryId) {
+          const assetCategory = await tx.assetCategory.findFirst({
+            where: { id: cleanCategoryId, companyId },
+          });
+          if (!assetCategory) {
+            throw new Error("Selected Category not found or does not exist for this company");
+          }
+        }
+
+        if (cleanPurchasedFromId) {
+          const dept = await tx.department.findFirst({
+            where: { id: cleanPurchasedFromId, companyId },
+          });
+          if (!dept) {
+            throw new Error("Selected Purchased From Company not found or does not exist for this company");
+          }
+        }
+
+        let finalSku = input.sku?.trim() || "";
         if (!finalSku) {
-          const count = await tx.inventoryItem.count({ where: { companyId } });
-          finalSku = `IBA-ABPL-SKU-${String(count + 1).padStart(3, '0')}`;
+          const company = await tx.company.update({
+            where: { id: companyId },
+            data: { lastInventorySequence: { increment: 1 } },
+            select: { code: true, name: true, lastInventorySequence: true },
+          });
+
+          let purchasedFromCode = "GEN";
+          if (cleanPurchasedFromId) {
+            const dept = await tx.department.findFirst({
+              where: { id: cleanPurchasedFromId, companyId },
+            });
+            if (dept?.code) {
+              purchasedFromCode = dept.code.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+            }
+          }
+
+          let categoryCode = "CAT";
+          if (cleanCategoryId) {
+            const cat = await tx.assetCategory.findFirst({
+              where: { id: cleanCategoryId, companyId },
+            });
+            if (cat?.code) {
+              categoryCode = cat.code.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+            }
+          }
+
+          const seqStr = String(company.lastInventorySequence).padStart(3, '0');
+          finalSku = `INV-${purchasedFromCode}-${categoryCode}-${seqStr}`;
         } else {
           const existingSku = await tx.inventoryItem.findFirst({
-            where: { companyId, sku: finalSku },
+            where: { companyId, sku: { equals: finalSku, mode: "insensitive" } },
           });
           if (existingSku) {
             throw new Error(`Item with SKU ${finalSku} already exists.`);
@@ -189,9 +262,9 @@ export class ApprovalService {
             sku: finalSku,
             name: input.name,
             description: input.description || null,
-            categoryId: input.categoryId || null,
-            unitId: input.unitId || null,
-            defaultLocationId: input.defaultLocationId || null,
+            categoryId: cleanCategoryId,
+            unitId: cleanUnitId,
+            defaultLocationId: cleanDefaultLocationId,
             minStockLevel: input.minStockLevel || 0,
             reorderLevel: input.reorderLevel || 0,
             itemType: input.itemType || "CONSUMABLE",
@@ -204,9 +277,9 @@ export class ApprovalService {
             brand: input.brand || null,
             model: input.model || null,
             serialNumber: input.serialNumber || null,
-            vendorId: input.vendorId || null,
-            purchasedFromDepartmentId: input.purchasedFromDepartmentId || null,
-            departmentId: input.departmentId || null,
+            vendorId: cleanVendorId,
+            purchasedFromDepartmentId: cleanPurchasedFromId,
+            departmentId: cleanDepartmentId,
             purchaseDate: input.purchaseDate ? new Date(input.purchaseDate) : null,
             cost: input.cost || null,
             warranty: input.warranty || null,

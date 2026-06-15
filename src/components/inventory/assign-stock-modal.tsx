@@ -24,7 +24,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { assignInventoryStock } from "@/app/actions/inventory-transaction-actions";
 
-import type { InventoryLocation, InventoryItem, InventoryBalance } from "@prisma/client";
+import type { Location, InventoryItem, InventoryBalance } from "@prisma/client";
 import { SearchableSelector } from "@/components/ui/searchable-selector";
 
 interface EmployeeOption {
@@ -43,7 +43,7 @@ interface AssignStockModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   item: InventoryItem & { balances: InventoryBalance[] };
-  locations: InventoryLocation[];
+  locations: Location[];
   employees: EmployeeOption[];
   departments: Option[];
   currentUserId: string;
@@ -63,9 +63,16 @@ export function AssignStockModal({
   const router = useRouter();
   const queryClient = useQueryClient();
 
+  const matchedMainLocation = useMemo(() => {
+    const defaultLocName = (item as any).defaultLocation?.name;
+    if (!defaultLocName) return "";
+    const matched = locations.find(l => l.name.toLowerCase() === defaultLocName.toLowerCase());
+    return matched ? matched.id : "";
+  }, [item, locations]);
+
   const [loading, setLoading] = useState(false);
   const [targetType, setTargetType] = useState<"EMPLOYEE" | "DEPARTMENT">(initialType);
-  const [locationId, setLocationId] = useState(item.defaultLocationId || (locations[0]?.id ?? ""));
+  const [locationId, setLocationId] = useState(matchedMainLocation || (locations[0]?.id ?? ""));
   const [quantity, setQuantity] = useState("1");
   const [notes, setNotes] = useState("");
 
@@ -97,9 +104,11 @@ export function AssignStockModal({
   }, [initialType, open]);
 
   const selectedLocationBalance = useMemo(() => {
-    const bal = item.balances.find((b) => b.locationId === locationId);
+    const selectedLocName = locations.find((l) => l.id === locationId)?.name;
+    if (!selectedLocName) return 0;
+    const bal = item.balances.find((b) => (b as any).location?.name.toLowerCase() === selectedLocName.toLowerCase());
     return bal ? bal.availableQty : 0;
-  }, [item.balances, locationId]);
+  }, [item.balances, locations, locationId]);
 
   const handleQuantityChange = (newQtyStr: string) => {
     setQuantity(newQtyStr);

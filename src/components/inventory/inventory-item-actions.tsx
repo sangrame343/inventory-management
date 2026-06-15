@@ -7,7 +7,7 @@ import { StockMovementModal } from "./stock-movement-modal";
 import { StockAdjustmentModal } from "./stock-adjustment-modal";
 import { IssueInventoryModal } from "./issue-inventory-modal";
 
-import type { InventoryItem, InventoryLocation } from "@prisma/client";
+import type { InventoryItem, Location } from "@prisma/client";
 
 interface Option {
   id: string;
@@ -23,7 +23,7 @@ interface EmployeeOption {
 
 interface InventoryItemActionsProps {
   item: any;
-  locations: InventoryLocation[];
+  locations: Location[];
   employees: EmployeeOption[];
   categories: Option[];
   departments: Option[];
