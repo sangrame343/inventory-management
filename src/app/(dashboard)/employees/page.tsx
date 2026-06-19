@@ -6,6 +6,7 @@ import { EmployeeImportButton } from "@/components/employees/employee-import-but
 import { EmployeeExportButton } from "@/components/employees/employee-export-button";
 import { SettingsService } from "@/services/settings-service";
 import { LocationService } from "@/services/location-service";
+import Link from "next/link";
 
 export default async function EmployeesPage(props: {
   searchParams: Promise<{
@@ -17,6 +18,7 @@ export default async function EmployeesPage(props: {
     locationId?: string;
     sortBy?: string;
     order?: string;
+    tab?: string;
   }>;
 }) {
   const searchParams = await props.searchParams;
@@ -27,11 +29,20 @@ export default async function EmployeesPage(props: {
   const page = Number(searchParams.page) || 1;
   const limit = Number(searchParams.limit) || 10;
   const query = searchParams.query || "";
-  const status = searchParams.status || "";
   const departmentId = searchParams.departmentId || "";
   const locationId = searchParams.locationId || "";
   const sortBy = searchParams.sortBy || "fullName";
   const order = (searchParams.order as "asc" | "desc") || "asc";
+
+  // Tab logic: "active" (default), "other", "all"
+  const tab = searchParams.tab || "active";
+  let status = "";
+  if (tab === "active") {
+    status = "ACTIVE";
+  } else if (tab === "other") {
+    status = "OTHER";
+  }
+  // tab === "all" → status stays empty, no filter
 
   const [employeesData, statusCounts, departments, locations] = await Promise.all([
     EmployeeService.getEmployeesPaginated(companyId, {
@@ -52,8 +63,27 @@ export default async function EmployeesPage(props: {
   // Compute quick stats
   const totalEmployeesCount = Object.values(statusCounts).reduce((a, b) => a + b, 0);
   const activeCount = statusCounts["ACTIVE"] || 0;
-  const onLeaveCount = statusCounts["ON_LEAVE"] || 0;
-  const inactiveCount = totalEmployeesCount - activeCount - onLeaveCount;
+  const otherCount = totalEmployeesCount - activeCount;
+
+  // Build tab hrefs preserving existing params (except page resets to 1)
+  function buildTabHref(tabVal: string) {
+    const params = new URLSearchParams();
+    if (query) params.set("query", query);
+    if (departmentId) params.set("departmentId", departmentId);
+    if (locationId) params.set("locationId", locationId);
+    if (sortBy !== "fullName") params.set("sortBy", sortBy);
+    if (order !== "asc") params.set("order", order);
+    if (limit !== 10) params.set("limit", String(limit));
+    params.set("tab", tabVal);
+    params.set("page", "1");
+    return `/employees?${params.toString()}`;
+  }
+
+  const tabs = [
+    { key: "active", label: "Active", count: activeCount, color: "emerald" },
+    { key: "other", label: "Other", count: otherCount, color: "zinc" },
+    { key: "all", label: "All", count: totalEmployeesCount, color: "blue" },
+  ] as const;
 
   return (
     <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -78,31 +108,49 @@ export default async function EmployeesPage(props: {
         </div>
       </div>
 
-      {/* ── Summary stat pills ── */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="inline-flex items-center gap-2 rounded-lg border border-border/50 bg-card px-3 py-2 shadow-2xs">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Total</span>
-          <span className="text-sm font-bold text-foreground tabular-nums">{totalEmployeesCount}</span>
-        </div>
-        <div className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2 shadow-2xs">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Active</span>
-          <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">{activeCount}</span>
-        </div>
-        {onLeaveCount > 0 && (
-          <div className="inline-flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2 shadow-2xs">
-            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-            <span className="text-[11px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">On Leave</span>
-            <span className="text-sm font-bold text-amber-600 dark:text-amber-400 tabular-nums">{onLeaveCount}</span>
-          </div>
-        )}
-        {inactiveCount > 0 && (
-          <div className="inline-flex items-center gap-2 rounded-lg border border-zinc-400/20 bg-zinc-500/5 px-3 py-2 shadow-2xs">
-            <span className="h-1.5 w-1.5 rounded-full bg-zinc-400" />
-            <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">Other</span>
-            <span className="text-sm font-bold text-zinc-500 tabular-nums">{inactiveCount}</span>
-          </div>
-        )}
+      {/* ── Tab bar (Active / Other / All) ── */}
+      <div className="flex items-center gap-1 rounded-xl bg-muted/40 p-1 border border-border/40 shadow-inner w-fit">
+        {tabs.map((t) => {
+          const isActive = tab === t.key;
+          return (
+            <Link
+              key={t.key}
+              href={buildTabHref(t.key)}
+              className={`
+                relative inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold whitespace-nowrap
+                transition-all duration-200 ease-out select-none
+                ${isActive
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground hover:bg-background/40"
+                }
+              `}
+            >
+              {t.key === "active" && (
+                <span className={`h-2 w-2 rounded-full ${isActive ? "bg-emerald-500 animate-pulse" : "bg-emerald-500/50"}`} />
+              )}
+              {t.key === "other" && (
+                <span className={`h-2 w-2 rounded-full ${isActive ? "bg-zinc-400" : "bg-zinc-400/50"}`} />
+              )}
+              {t.key === "all" && (
+                <span className={`h-2 w-2 rounded-full ${isActive ? "bg-blue-500" : "bg-blue-500/50"}`} />
+              )}
+              {t.label}
+              <span className={`
+                inline-flex items-center justify-center rounded-full px-1.5 min-w-[22px] h-[20px] text-[10px] font-bold tabular-nums leading-none
+                ${isActive
+                  ? t.key === "active"
+                    ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                    : t.key === "other"
+                      ? "bg-zinc-500/15 text-zinc-600 dark:text-zinc-400"
+                      : "bg-blue-500/15 text-blue-600 dark:text-blue-400"
+                  : "bg-muted text-muted-foreground/60"
+                }
+              `}>
+                {t.count}
+              </span>
+            </Link>
+          );
+        })}
       </div>
 
       <div className="h-px bg-gradient-to-r from-border via-border/50 to-transparent" />
@@ -112,6 +160,8 @@ export default async function EmployeesPage(props: {
         totalCount={employeesData.total}
         departments={departments}
         locations={locations}
+        activeTab={tab}
+        statusCounts={statusCounts}
       />
     </div>
   );

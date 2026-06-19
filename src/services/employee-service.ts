@@ -49,7 +49,15 @@ export class EmployeeService {
     }
 
     if (params.status) {
-      andConditions.push({ status: params.status });
+      const statuses = params.status.split(",").filter(Boolean);
+      if (statuses.length === 1 && statuses[0] === "OTHER") {
+        // OTHER = everything except ACTIVE
+        andConditions.push({ status: { not: "ACTIVE" } });
+      } else if (statuses.length === 1) {
+        andConditions.push({ status: statuses[0] });
+      } else {
+        andConditions.push({ status: { in: statuses } });
+      }
     }
 
     if (params.departmentId) {

@@ -1,36 +1,73 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Asset Management System
 
-## Getting Started
+> Multi-company enterprise platform for managing assets, inventory, maintenance, transfers, and employee handovers — built with Next.js 16, Prisma, and Supabase.
 
-First, run the development server:
+## What This App Does
+
+- **Track assets** across their full lifecycle (create → assign → transfer → maintain → dispose)
+- **Manage inventory stock** with warehouse-style quantity tracking per location
+- **Assign assets** to employees or departments with digital handover receipts
+- **Transfer assets** between locations/employees with multi-step approval workflows
+- **Maintain assets** via ticketing, scheduling, and cost tracking
+- **Approve operations** — ADMINs submit requests, SUPER_ADMINs approve or reject
+- **Acknowledge receipts** — public token-based links with digital signature + PDF generation
+- **Backup data** — SQL export of local or production databases
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 16 (App Router) |
+| Language | TypeScript |
+| ORM | Prisma 7 |
+| Database | PostgreSQL (Docker locally, Supabase in production) |
+| Auth | NextAuth v5 (Auth.js) |
+| UI | shadcn/ui + Tailwind CSS v4 |
+| Storage | Supabase Storage (production) / Local filesystem (dev) |
+| Hosting | Vercel |
+
+## Quick Start
 
 ```bash
+# Clone and install
+git clone <repo-url>
+cd inventory-management
+npm install
+
+# Start Docker PostgreSQL
+docker run --name inventory-pg -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=inventory_management -p 5432:5432 -d postgres:16
+
+# Set up environment
+# Create .env with DATABASE_URL, DIRECT_URL, AUTH_SECRET, AUTH_URL (see docs/LOCAL_SETUP.md)
+
+# Run migrations and start
+npx prisma migrate dev
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 📚 Documentation
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Document | Description |
+|---|---|
+| [📋 Project Overview](./docs/README.md) | Full project overview, modules, and tech stack |
+| [🏗️ Architecture](./docs/ARCHITECTURE.md) | System design, folder structure, data flow patterns |
+| [💻 Local Setup](./docs/LOCAL_SETUP.md) | Docker PostgreSQL, environment, install, and run |
+| [🚀 Production Setup](./docs/PRODUCTION_SETUP.md) | Supabase, Vercel, storage buckets, first deploy |
+| [🗄️ Database](./docs/DATABASE.md) | All Prisma models, enums, relations, migration workflow |
+| [📦 Modules](./docs/MODULES.md) | Detailed docs for all 18 modules |
+| [✍️ Acknowledgement System](./docs/ASSET_ACKNOWLEDGEMENT.md) | Token security, signatures, PDF generation |
+| [🔑 Environment Variables](./docs/ENV_VARIABLES.md) | Complete env reference with security rules |
+| [📤 Deployment Workflow](./docs/DEPLOYMENT_WORKFLOW.md) | Git → Build → Deploy → Migrate pipeline |
+| [🔒 Security](./docs/SECURITY.md) | Auth, RBAC, public routes, Supabase RLS, secrets |
+| [🔧 Troubleshooting](./docs/TROUBLESHOOTING.md) | Common errors and fixes |
+| [🤝 Developer Handover](./docs/DEVELOPER_HANDOVER.md) | Onboarding guide for new developers |
 
-## Learn More
+## User Roles
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Role | Access |
+|---|---|
+| **SUPER_ADMIN** | Full access, approve/reject requests, manage all companies |
+| **ADMIN** | CRUD with approval workflow, view own requests |
+| **USER** | Read-only access to assets and dashboard |

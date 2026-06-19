@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useCallback } from "react"
 import {
   Table,
   TableBody,
@@ -42,6 +42,10 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Pencil,
+  Save,
+  XCircle,
+  Loader2,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -60,6 +64,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useDebouncedCallback } from "use-debounce"
 
@@ -68,6 +79,8 @@ interface EmployeeListProps {
   totalCount: number
   departments: any[]
   locations: any[]
+  activeTab: string
+  statusCounts: Record<string, number>
 }
 
 type SortKey = "fullName" | "employeeCode" | "department" | "location" | "joiningDate" | "status"
@@ -130,6 +143,8 @@ const STATUS_CONFIG: Record<
   },
 }
 
+const ALL_STATUSES = Object.keys(STATUS_CONFIG)
+
 const sortOptions = [
   { label: "Name A → Z", value: "fullName" as SortKey, order: "asc" as SortOrder, icon: ArrowUp },
   { label: "Name Z → A", value: "fullName" as SortKey, order: "desc" as SortOrder, icon: ArrowDown },
@@ -139,14 +154,6 @@ const sortOptions = [
   { label: "Joining Date ↑ (Oldest)", value: "joiningDate" as SortKey, order: "asc" as SortOrder, icon: ArrowUp },
   { label: "Status ↑", value: "status" as SortKey, order: "asc" as SortOrder, icon: ArrowUp },
   { label: "Status ↓", value: "status" as SortKey, order: "desc" as SortOrder, icon: ArrowDown },
-]
-
-const quickFilters = [
-  { label: "All", value: null, icon: Users },
-  { label: "Active", value: "ACTIVE", icon: UserCheck },
-  { label: "On Leave", value: "ON_LEAVE", icon: Clock },
-  { label: "Inactive", value: "INACTIVE", icon: UserMinus },
-  { label: "Terminated", value: "TERMINATED", icon: Sparkles },
 ]
 
 /* Avatar initials helper */
@@ -163,7 +170,15 @@ function getAvatarHue(str: string) {
   return Math.abs(hash) % 360
 }
 
-export function EmployeeList({ employees, totalCount, departments, locations }: EmployeeListProps) {
+/* ── Quick edit row data ── */
+interface QuickEditData {
+  designation?: string
+  departmentId?: string
+  locationId?: string
+  status?: string
+}
+
+export function EmployeeList({ employees, totalCount, departments, locations, activeTab, statusCounts }: EmployeeListProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -172,19 +187,30 @@ export function EmployeeList({ employees, totalCount, departments, locations }: 
   // Selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
+  // Quick Edit state
+  const [editingIds, setEditingIds] = useState<Set<string>>(new Set())
+  const [editData, setEditData] = useState<Record<string, QuickEditData>>({})
+  const [savingIds, setSavingIds] = useState<Set<string>>(new Set())
+  const [isBulkQuickEditing, setIsBulkQuickEditing] = useState(false)
+
   // URL State
   const currentSortBy = (searchParams.get("sortBy") as SortKey) || "fullName"
   const currentOrder = (searchParams.get("order") as SortOrder) || "asc"
   const currentPage = Number(searchParams.get("page")) || 1
   const pageSize = Number(searchParams.get("limit")) || 10
+  const currentTab = searchParams.get("tab") || "active"
 
-  const statusFilters = searchParams.get("status") ? searchParams.get("status")!.split(",").filter(Boolean) : []
   const deptFilter = searchParams.get("departmentId") || null
   const locFilter = searchParams.get("locationId") || null
-  const quickFilter = statusFilters.length === 1 ? statusFilters[0] : null
 
   // Search local state & debounce
   const [searchQuery, setSearchQuery] = useState(searchParams.get("query") || "")
+
+  // Helper to build URL preserving the tab param
+  const buildUrl = useCallback((params: URLSearchParams) => {
+    if (!params.has("tab")) params.set("tab", currentTab)
+    return `/employees?${params.toString()}`
+  }, [currentTab])
 
   const debouncedSearch = useDebouncedCallback((val: string) => {
     const params = new URLSearchParams(searchParams.toString())
@@ -194,7 +220,7 @@ export function EmployeeList({ employees, totalCount, departments, locations }: 
       params.delete("query")
     }
     params.set("page", "1")
-    router.push(`/employees?${params.toString()}`)
+    router.push(buildUrl(params))
   }, 300)
 
   const handleSearchChange = (val: string) => {
@@ -218,6 +244,8 @@ export function EmployeeList({ employees, totalCount, departments, locations }: 
   } | null>(null)
 
   const handleRowClick = (id: string) => {
+    // Don't open detail sheet if we're in edit mode for this row
+    if (editingIds.has(id)) return
     setSelectedId(id)
     setIsDetailsOpen(true)
   }
@@ -247,33 +275,7 @@ export function EmployeeList({ employees, totalCount, departments, locations }: 
       params.set("order", "asc")
     }
     params.set("page", "1")
-    router.push(`/employees?${params.toString()}`)
-  }
-
-  const toggleStatusFilter = (statusVal: string) => {
-    const params = new URLSearchParams(searchParams.toString())
-    const current = params.get("status") ? params.get("status")!.split(",").filter(Boolean) : []
-    const updated = current.includes(statusVal)
-      ? current.filter((s) => s !== statusVal)
-      : [...current, statusVal]
-    if (updated.length > 0) {
-      params.set("status", updated.join(","))
-    } else {
-      params.delete("status")
-    }
-    params.set("page", "1")
-    router.push(`/employees?${params.toString()}`)
-  }
-
-  const applyQuickFilter = (value: string | null) => {
-    const params = new URLSearchParams(searchParams.toString())
-    if (value) {
-      params.set("status", value)
-    } else {
-      params.delete("status")
-    }
-    params.set("page", "1")
-    router.push(`/employees?${params.toString()}`)
+    router.push(buildUrl(params))
   }
 
   const applyDeptFilter = (id: string | null) => {
@@ -284,7 +286,7 @@ export function EmployeeList({ employees, totalCount, departments, locations }: 
       params.delete("departmentId")
     }
     params.set("page", "1")
-    router.push(`/employees?${params.toString()}`)
+    router.push(buildUrl(params))
   }
 
   const applyLocFilter = (id: string | null) => {
@@ -295,17 +297,16 @@ export function EmployeeList({ employees, totalCount, departments, locations }: 
       params.delete("locationId")
     }
     params.set("page", "1")
-    router.push(`/employees?${params.toString()}`)
+    router.push(buildUrl(params))
   }
 
   const totalActiveFilters =
-    statusFilters.length +
     (deptFilter ? 1 : 0) +
     (locFilter ? 1 : 0)
 
   const clearAllFilters = () => {
     setSearchQuery("")
-    router.push("/employees")
+    router.push(`/employees?tab=${currentTab}`)
   }
 
   const totalPages = Math.ceil(totalCount / pageSize) || 1
@@ -314,14 +315,103 @@ export function EmployeeList({ employees, totalCount, departments, locations }: 
   const handlePageChange = (newPage: number) => {
     const params = new URLSearchParams(searchParams.toString())
     params.set("page", newPage.toString())
-    router.push(`/employees?${params.toString()}`)
+    router.push(buildUrl(params))
   }
 
   const handlePageSizeChange = (newSize: number) => {
     const params = new URLSearchParams(searchParams.toString())
     params.set("limit", newSize.toString())
     params.set("page", "1")
-    router.push(`/employees?${params.toString()}`)
+    router.push(buildUrl(params))
+  }
+
+  /* ── Quick edit functions ── */
+  const startQuickEdit = (employeeId: string, employee: any, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation()
+    setEditingIds((prev) => new Set(prev).add(employeeId))
+    setEditData((prev) => ({
+      ...prev,
+      [employeeId]: {
+        designation: employee.designation || "",
+        departmentId: employee.departmentId || "",
+        locationId: employee.locationId || "",
+        status: employee.status || "ACTIVE",
+      },
+    }))
+  }
+
+  const cancelQuickEdit = (employeeId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation()
+    setEditingIds((prev) => {
+      const next = new Set(prev)
+      next.delete(employeeId)
+      return next
+    })
+    setEditData((prev) => {
+      const next = { ...prev }
+      delete next[employeeId]
+      return next
+    })
+  }
+
+  const updateEditField = (employeeId: string, field: keyof QuickEditData, value: string) => {
+    setEditData((prev) => ({
+      ...prev,
+      [employeeId]: {
+        ...prev[employeeId],
+        [field]: value,
+      },
+    }))
+  }
+
+  const saveQuickEdit = async (employeeId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation()
+    const data = editData[employeeId]
+    if (!data) return
+
+    setSavingIds((prev) => new Set(prev).add(employeeId))
+    try {
+      const res = await fetch(`/api/employees/${employeeId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      })
+      if (!res.ok) throw new Error("Failed to save")
+      cancelQuickEdit(employeeId)
+      router.refresh()
+    } catch (error) {
+      console.error("Quick edit save failed:", error)
+    } finally {
+      setSavingIds((prev) => {
+        const next = new Set(prev)
+        next.delete(employeeId)
+        return next
+      })
+    }
+  }
+
+  // Bulk quick edit: start editing all selected employees
+  const startBulkQuickEdit = () => {
+    setIsBulkQuickEditing(true)
+    employees
+      .filter((emp) => selectedIds.has(emp.id))
+      .forEach((emp) => {
+        startQuickEdit(emp.id, emp)
+      })
+  }
+
+  // Save all quick-edit rows
+  const saveAllQuickEdits = async () => {
+    const idsToSave = Array.from(editingIds)
+    await Promise.all(idsToSave.map((id) => saveQuickEdit(id)))
+    setIsBulkQuickEditing(false)
+    setSelectedIds(new Set())
+  }
+
+  const cancelAllQuickEdits = () => {
+    setEditingIds(new Set())
+    setEditData({})
+    setIsBulkQuickEditing(false)
   }
 
   const handleBulkAction = async () => {
@@ -376,13 +466,6 @@ export function EmployeeList({ employees, totalCount, departments, locations }: 
         : "border-border/60 bg-card text-muted-foreground/80 hover:text-foreground hover:bg-muted/30"
     )
 
-  const countBubble = (n: number) =>
-    n > 0 ? (
-      <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground leading-none px-1 shadow-sm">
-        {n}
-      </span>
-    ) : null
-
   const menuLabel = (text: string) => (
     <p className="px-2 pb-1 pt-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">
       {text}
@@ -395,9 +478,6 @@ export function EmployeeList({ employees, totalCount, departments, locations }: 
 
   /* ── Active filter chips ── */
   const filterChips: { label: string; key: string; value?: string }[] = []
-  statusFilters.forEach((s) => {
-    filterChips.push({ label: STATUS_CONFIG[s]?.label || s, key: "status", value: s })
-  })
   if (deptFilter) {
     const dept = departments.find((d) => d.id === deptFilter)
     filterChips.push({ label: dept?.name || deptFilter, key: "dept" })
@@ -410,7 +490,7 @@ export function EmployeeList({ employees, totalCount, departments, locations }: 
   return (
     <div className="space-y-0">
       {/* ══════════════════════════════════════
-           SEARCH + QUICK FILTERS ROW
+           SEARCH + CONTROLS ROW
          ══════════════════════════════════════ */}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between py-3 pb-3">
         {/* Search Input */}
@@ -438,31 +518,36 @@ export function EmployeeList({ employees, totalCount, departments, locations }: 
           )}
         </div>
 
-        {/* Quick Filter Pills */}
-        <div className="flex items-center gap-0.5 rounded-xl bg-muted/40 p-0.5 border border-border/40 shadow-3xs overflow-x-auto no-scrollbar">
-          {quickFilters.map((q) => {
-            const Icon = q.icon
-            const isActive =
-              quickFilter === q.value ||
-              (q.value === null && !quickFilter && statusFilters.length === 0)
-            return (
-              <button
-                key={q.label}
-                onClick={() => applyQuickFilter(q.value)}
-                className={cn(
-                  "relative inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider whitespace-nowrap",
-                  "transition-all duration-200 ease-out",
-                  isActive
-                    ? "bg-background text-foreground shadow-2xs"
-                    : "text-muted-foreground hover:text-foreground hover:bg-background/40"
-                )}
-              >
-                <Icon className={cn("h-3 w-3", isActive ? "text-primary scale-110" : "text-muted-foreground/80")} />
-                {q.label}
-              </button>
-            )
-          })}
-        </div>
+        {/* Quick edit badge when in bulk edit mode */}
+        {isBulkQuickEditing && (
+          <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-3 duration-200 rounded-xl border border-blue-500/20 bg-blue-500/[0.04] px-4 py-2 shadow-sm">
+            <Pencil className="h-3.5 w-3.5 text-blue-500" />
+            <span className="text-xs font-bold text-blue-600 dark:text-blue-400">
+              Quick Edit Mode
+            </span>
+            <span className="text-xs text-blue-600/60 dark:text-blue-400/60">
+              — {editingIds.size} rows
+            </span>
+            <div className="h-4 w-px bg-blue-500/20" />
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs px-3 rounded-lg border-emerald-500/30 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
+              onClick={saveAllQuickEdits}
+            >
+              <Save className="h-3 w-3 mr-1" />
+              Save All
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 text-xs px-2 rounded-lg"
+              onClick={cancelAllQuickEdits}
+            >
+              Cancel
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* ══════════════════════════════════════
@@ -524,7 +609,7 @@ export function EmployeeList({ employees, totalCount, departments, locations }: 
                         params.set("sortBy", opt.value)
                         params.set("order", opt.order)
                         params.set("page", "1")
-                        router.push(`/employees?${params.toString()}`)
+                        router.push(buildUrl(params))
                       }}
                     >
                       <Icon className="h-3.5 w-3.5 shrink-0 opacity-50" />
@@ -537,11 +622,20 @@ export function EmployeeList({ employees, totalCount, departments, locations }: 
             </DropdownMenu>
 
             {/* Bulk selection chip */}
-            {selectedIds.size > 0 && (
+            {selectedIds.size > 0 && !isBulkQuickEditing && (
               <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-3 duration-200 rounded-xl border border-amber-500/20 bg-amber-500/[0.04] px-3 py-1.5 shadow-sm">
                 <span className="text-xs font-bold text-amber-600 tabular-nums">{selectedIds.size}</span>
                 <span className="text-xs text-amber-600/70">selected</span>
                 <div className="h-3.5 w-px bg-amber-500/20" />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-6 text-[11px] px-2 rounded-md shadow-sm border-blue-500/30 text-blue-700 hover:text-blue-800 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/30"
+                  onClick={startBulkQuickEdit}
+                >
+                  <Pencil className="h-3 w-3 mr-1" />
+                  Quick Edit
+                </Button>
                 <Button
                   size="sm"
                   variant="outline"
@@ -580,33 +674,6 @@ export function EmployeeList({ employees, totalCount, departments, locations }: 
         >
           <div className="overflow-hidden">
             <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/50 bg-muted/20 p-3 backdrop-blur-sm shadow-inner">
-              {/* Status multi-filter */}
-              <DropdownMenu>
-                <DropdownMenuTrigger className={triggerCls(statusFilters.length > 0)}>
-                  <Tag className="h-3.5 w-3.5" />
-                  Status
-                  {countBubble(statusFilters.length)}
-                  <ChevronDown className="h-3 w-3 opacity-40" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-[210px] p-1.5">
-                  {menuLabel("Filter by Status")}
-                  <DropdownMenuSeparator className="my-1 opacity-50" />
-                  {Object.entries(STATUS_CONFIG).map(([value, cfg]) => (
-                    <DropdownMenuCheckboxItem
-                      key={value}
-                      checked={statusFilters.includes(value)}
-                      onCheckedChange={() => toggleStatusFilter(value)}
-                      className="rounded-lg py-2 px-2 cursor-pointer"
-                    >
-                      <span className={cn("inline-flex items-center gap-2 text-[13px] font-medium", cfg.text)}>
-                        <span className={cn("h-2 w-2 rounded-full ring-2 shadow-sm", cfg.dot, cfg.ring)} />
-                        {cfg.label}
-                      </span>
-                    </DropdownMenuCheckboxItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-
               {/* Department filter */}
               <DropdownMenu>
                 <DropdownMenuTrigger className={triggerCls(!!deptFilter)}>
@@ -678,7 +745,7 @@ export function EmployeeList({ employees, totalCount, departments, locations }: 
               </DropdownMenu>
 
               {/* Clear all */}
-              {(totalActiveFilters > 0 || quickFilter) && (
+              {totalActiveFilters > 0 && (
                 <>
                   <div className="h-5 w-px bg-border/40 mx-1" />
                   <button
@@ -698,7 +765,7 @@ export function EmployeeList({ employees, totalCount, departments, locations }: 
       {/* ══════════════════════════════════════
            ACTIVE FILTER CHIPS
          ══════════════════════════════════════ */}
-      {(filterChips.length > 0 || searchQuery || quickFilter) && (
+      {(filterChips.length > 0 || searchQuery) && (
         <div className="flex flex-wrap items-center gap-1.5 pb-3 animate-in fade-in slide-in-from-top-2 duration-300">
           <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground/50 mr-1">
             Showing
@@ -718,35 +785,19 @@ export function EmployeeList({ employees, totalCount, departments, locations }: 
             </span>
           )}
 
-          {quickFilter && (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/15 bg-primary/[0.04] px-2.5 py-1 text-xs font-medium text-primary shadow-sm transition-all hover:shadow-md hover:bg-primary/[0.08]">
-              <Sparkles className="h-3 w-3 opacity-50" />
-              {quickFilters.find((q) => q.value === quickFilter)?.label || quickFilter}
-              <button
-                type="button"
-                onClick={() => applyQuickFilter(null)}
-                className="rounded-full p-0.5 text-primary/40 hover:text-primary hover:bg-primary/10 transition-all"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </span>
-          )}
-
           {filterChips.map((chip, i) => (
             <span
               key={i}
               className="inline-flex items-center gap-1.5 rounded-full border border-primary/15 bg-primary/[0.04] px-2.5 py-1 text-xs font-medium text-primary shadow-sm transition-all hover:shadow-md hover:bg-primary/[0.08] animate-in fade-in zoom-in-95 duration-200"
               style={{ animationDelay: `${i * 40}ms` }}
             >
-              {chip.key === "status" ? <Tag className="h-3 w-3 opacity-50" /> :
-               chip.key === "dept" ? <Building2 className="h-3 w-3 opacity-50" /> :
+              {chip.key === "dept" ? <Building2 className="h-3 w-3 opacity-50" /> :
                <MapPin className="h-3 w-3 opacity-50" />}
               {chip.label}
               <button
                 type="button"
                 onClick={() => {
-                  if (chip.key === "status" && chip.value) toggleStatusFilter(chip.value)
-                  else if (chip.key === "dept") applyDeptFilter(null)
+                  if (chip.key === "dept") applyDeptFilter(null)
                   else if (chip.key === "loc") applyLocFilter(null)
                 }}
                 className="rounded-full p-0.5 text-primary/40 hover:text-primary hover:bg-primary/10 transition-all"
@@ -824,7 +875,7 @@ export function EmployeeList({ employees, totalCount, departments, locations }: 
                       <p className="text-sm font-semibold text-muted-foreground">No employees found</p>
                       <p className="text-xs text-muted-foreground/60 mt-1">Try adjusting your search or filter criteria</p>
                     </div>
-                    {(searchQuery || statusFilters.length > 0 || deptFilter || locFilter || quickFilter) && (
+                    {(searchQuery || deptFilter || locFilter) && (
                       <button
                         onClick={clearAllFilters}
                         className="text-xs text-primary hover:underline flex items-center gap-1"
@@ -840,6 +891,9 @@ export function EmployeeList({ employees, totalCount, departments, locations }: 
                 const statusCfg = STATUS_CONFIG[employee.status] || STATUS_CONFIG["INACTIVE"]
                 const hue = getAvatarHue(employee.id)
                 const isSelected = selectedIds.has(employee.id)
+                const isEditing = editingIds.has(employee.id)
+                const isSaving = savingIds.has(employee.id)
+                const rowEditData = editData[employee.id]
 
                 return (
                   <TableRow
@@ -848,7 +902,8 @@ export function EmployeeList({ employees, totalCount, departments, locations }: 
                       "cursor-pointer border-b border-border/30 group/row",
                       "transition-all duration-150 ease-out",
                       "hover:bg-primary/[0.025] hover:shadow-[inset_3px_0_0_0] hover:shadow-primary/30",
-                      isSelected && "bg-primary/[0.04] shadow-[inset_3px_0_0_0] shadow-primary/50"
+                      isSelected && "bg-primary/[0.04] shadow-[inset_3px_0_0_0] shadow-primary/50",
+                      isEditing && "bg-blue-500/[0.03] shadow-[inset_3px_0_0_0] shadow-blue-500/40 hover:bg-blue-500/[0.05]"
                     )}
                     onClick={() => handleRowClick(employee.id)}
                   >
@@ -906,45 +961,112 @@ export function EmployeeList({ employees, totalCount, departments, locations }: 
                       </div>
                     </TableCell>
 
-                    {/* Dept / Location */}
-                    <TableCell>
-                      <div className="flex flex-col gap-0.5">
-                        <span className="text-xs font-semibold text-foreground/80 leading-tight">
-                          {employee.department?.name || "—"}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground/60 flex items-center gap-0.5">
-                          {employee.location?.name && <MapPin className="h-2.5 w-2.5 shrink-0" />}
-                          {employee.location?.name || "—"}
-                        </span>
-                      </div>
+                    {/* Dept / Location (editable in quick edit mode) */}
+                    <TableCell onClick={(e) => isEditing && e.stopPropagation()}>
+                      {isEditing ? (
+                        <div className="flex flex-col gap-1.5 min-w-[150px]">
+                          <Select
+                            value={rowEditData?.departmentId || ""}
+                            onValueChange={(val) => updateEditField(employee.id, "departmentId", val || "")}
+                          >
+                            <SelectTrigger className="h-7 text-xs rounded-lg border-blue-500/30 bg-blue-500/[0.03]">
+                              <SelectValue placeholder="Dept">
+                                {departments.find(d => d.id === rowEditData?.departmentId)?.name || "Select..."}
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              {departments.map((d) => (
+                                <SelectItem key={d.id} value={d.id} className="text-xs">{d.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Select
+                            value={rowEditData?.locationId || ""}
+                            onValueChange={(val) => updateEditField(employee.id, "locationId", val || "")}
+                          >
+                            <SelectTrigger className="h-7 text-xs rounded-lg border-blue-500/30 bg-blue-500/[0.03]">
+                              <SelectValue placeholder="Location">
+                                {locations.find(l => l.id === rowEditData?.locationId)?.name || "Select..."}
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              {locations.map((l) => (
+                                <SelectItem key={l.id} value={l.id} className="text-xs">{l.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-xs font-semibold text-foreground/80 leading-tight">
+                            {employee.department?.name || "—"}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground/60 flex items-center gap-0.5">
+                            {employee.location?.name && <MapPin className="h-2.5 w-2.5 shrink-0" />}
+                            {employee.location?.name || "—"}
+                          </span>
+                        </div>
+                      )}
                     </TableCell>
 
-                    {/* Designation */}
-                    <TableCell>
-                      <span className="text-xs text-muted-foreground">
-                        {employee.designation || "—"}
-                      </span>
+                    {/* Designation (editable in quick edit mode) */}
+                    <TableCell onClick={(e) => isEditing && e.stopPropagation()}>
+                      {isEditing ? (
+                        <Input
+                          value={rowEditData?.designation || ""}
+                          onChange={(e) => updateEditField(employee.id, "designation", e.target.value)}
+                          className="h-7 text-xs rounded-lg border-blue-500/30 bg-blue-500/[0.03] min-w-[120px]"
+                          placeholder="Designation"
+                        />
+                      ) : (
+                        <span className="text-xs text-muted-foreground">
+                          {employee.designation || "—"}
+                        </span>
+                      )}
                     </TableCell>
 
-                    {/* Status badge */}
-                    <TableCell>
-                      <span
-                        className={cn(
-                          "inline-flex items-center gap-1.5 rounded-full px-2 py-[3px] text-[10px] font-semibold tracking-wider uppercase border shadow-2xs",
-                          statusCfg.bg,
-                          statusCfg.text,
-                          `ring-1 ${statusCfg.ring}`
-                        )}
-                      >
+                    {/* Status badge (editable in quick edit mode) */}
+                    <TableCell onClick={(e) => isEditing && e.stopPropagation()}>
+                      {isEditing ? (
+                        <Select
+                          value={rowEditData?.status || "ACTIVE"}
+                          onValueChange={(val) => updateEditField(employee.id, "status", val || "ACTIVE")}
+                        >
+                          <SelectTrigger className="h-7 text-xs rounded-lg border-blue-500/30 bg-blue-500/[0.03] min-w-[110px]">
+                            <SelectValue>
+                              {STATUS_CONFIG[rowEditData?.status || "ACTIVE"]?.label || rowEditData?.status}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {ALL_STATUSES.map((s) => (
+                              <SelectItem key={s} value={s} className="text-xs">
+                                <span className="flex items-center gap-1.5">
+                                  <span className={cn("h-2 w-2 rounded-full", STATUS_CONFIG[s].dot)} />
+                                  {STATUS_CONFIG[s].label}
+                                </span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
                         <span
                           className={cn(
-                            "h-[5px] w-[5px] rounded-full",
-                            statusCfg.dot,
-                            statusCfg.pulse && "animate-pulse duration-1000"
+                            "inline-flex items-center gap-1.5 rounded-full px-2 py-[3px] text-[10px] font-semibold tracking-wider uppercase border shadow-2xs",
+                            statusCfg.bg,
+                            statusCfg.text,
+                            `ring-1 ${statusCfg.ring}`
                           )}
-                        />
-                        {statusCfg.label}
-                      </span>
+                        >
+                          <span
+                            className={cn(
+                              "h-[5px] w-[5px] rounded-full",
+                              statusCfg.dot,
+                              statusCfg.pulse && "animate-pulse duration-1000"
+                            )}
+                          />
+                          {statusCfg.label}
+                        </span>
+                      )}
                     </TableCell>
 
                     {/* Joining date */}
@@ -958,11 +1080,45 @@ export function EmployeeList({ employees, totalCount, departments, locations }: 
                       onClick={(e) => e.stopPropagation()}
                     >
                       <div className="flex justify-end items-center gap-1">
-                        <EmployeeForm
-                          employee={employee}
-                          departments={departments}
-                          locations={locations}
-                        />
+                        {isEditing ? (
+                          <>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                              onClick={(e) => saveQuickEdit(employee.id, e)}
+                              disabled={isSaving}
+                            >
+                              {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                              onClick={(e) => cancelQuickEdit(employee.id, e)}
+                              disabled={isSaving}
+                            >
+                              <XCircle className="h-3.5 w-3.5" />
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 text-muted-foreground/60 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 opacity-0 group-hover/row:opacity-100 transition-opacity"
+                              onClick={(e) => startQuickEdit(employee.id, employee, e)}
+                              title="Quick edit"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <EmployeeForm
+                              employee={employee}
+                              departments={departments}
+                              locations={locations}
+                            />
+                          </>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

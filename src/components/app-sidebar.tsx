@@ -14,7 +14,7 @@ import {
   ChevronUp,
   User2,
   ShieldCheck,
-  Database,
+  Settings2,
 } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
@@ -72,38 +72,12 @@ export function AppSidebar() {
     return true;
   });
 
-  // Add role-specific items
-  if (role === "SUPER_ADMIN") {
+  // Add Admin Panel for elevated roles
+  if (role === "SUPER_ADMIN" || role === "ADMIN" || isSuperAdmin) {
     navItems.push({
-      title: "Approvals",
-      url: "/approvals",
-      icon: ShieldCheck,
-    });
-  }
-
-  if (role === "ADMIN") {
-    navItems.push({
-      title: "My Requests",
-      url: "/my-requests",
-      icon: Activity,
-    });
-  }
-
-  if (isSuperAdmin) {
-    navItems.push({
-      title: "Registrations",
-      url: "/super-admin/registrations",
-      icon: ShieldCheck,
-    });
-    navItems.push({
-      title: "Users (Admin)",
-      url: "/super-admin/users",
-      icon: Users,
-    });
-    navItems.push({
-      title: "DB Backup",
-      url: "/super-admin/backup",
-      icon: Database,
+      title: "Admin Panel",
+      url: "/admin-panel",
+      icon: Settings2,
     });
   }
 

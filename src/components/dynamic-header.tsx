@@ -24,6 +24,7 @@ export function DynamicHeader() {
     approvals: "Approvals",
     profile: "Profile",
     "my-requests": "My Requests",
+    "admin-panel": "Admin Panel",
     "super-admin": "Super Admin",
     registrations: "Registrations",
     users: "Users",
